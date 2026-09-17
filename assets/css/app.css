@@ -1,0 +1,361 @@
+/* CommitCraft — design system
+   Paleta "RPG ao anoitecer": céu noturno arroxeado, luz de lamparina (ouro),
+   musgo para tudo que foi enviado ao mundo (deploy). */
+
+@import "tailwindcss" source(none);
+@import "phoenix-colocated/commitcraft/colocated.css";
+@source "../css";
+@source "../js";
+@source "../../lib/commitcraft_web";
+@source "../../_build/dev/phoenix-colocated/commitcraft/*/";
+
+@plugin "../vendor/heroicons";
+
+@plugin "daisyui/packages/bundle/daisyui" {
+  themes: false;
+}
+
+/* Tema único: o CommitCraft acontece à noite. */
+@plugin "daisyui/packages/bundle/daisyui-theme" {
+  name: "craft";
+  default: true;
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: #241b3d;
+  --color-base-200: #1c1533;
+  --color-base-300: #15102a;
+  --color-base-content: #f2e9dc;
+  --color-primary: #ffc24b;
+  --color-primary-content: #15102a;
+  --color-secondary: #6fbf73;
+  --color-secondary-content: #15102a;
+  --color-accent: #7c6be8;
+  --color-accent-content: #f2e9dc;
+  --color-neutral: #3d3160;
+  --color-neutral-content: #f2e9dc;
+  --color-info: #6fbf73;
+  --color-info-content: #15102a;
+  --color-success: #6fbf73;
+  --color-success-content: #15102a;
+  --color-warning: #ffc24b;
+  --color-warning-content: #15102a;
+  --color-error: #e8705d;
+  --color-error-content: #15102a;
+  --radius-selector: 0;
+  --radius-field: 0;
+  --radius-box: 0;
+  --border: 2px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@theme {
+  --color-void: #15102a;
+  --color-ink: #0d0a1a;
+  --color-panel: #241b3d;
+  --color-panel-hi: #2f2450;
+  --color-stone: #3d3160;
+  --color-bone: #f2e9dc;
+  --color-muted: #a396c7;
+  --color-gold: #ffc24b;
+  --color-gold-deep: #c8871f;
+  --color-moss: #6fbf73;
+  --color-violet: #7c6be8;
+  --color-ember: #e8705d;
+
+  --font-pixel: "Silkscreen", "Courier New", monospace;
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+}
+
+@custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
+@custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
+@custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
+
+[data-phx-session], [data-phx-teleported-src] { display: contents }
+
+/* ─────────────────────────────  base  ───────────────────────────── */
+
+html {
+  background: var(--color-void);
+  /* Sem rolagem suave: menu de 8 bits corta seco, e o `smooth` do Chrome
+     engasga em páginas com animação contínua — a âncora ficava parada.
+     `clip` em vez de `hidden` porque hidden transformaria o elemento em
+     contêiner de rolagem e também quebraria o salto das âncoras. */
+  overflow-x: clip;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-bone);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+svg { shape-rendering: crispEdges; }
+
+::selection {
+  background: var(--color-gold);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
+/* ──────────────────────────  molduras 8-bit  ─────────────────────────
+   Cantos entalhados feitos com sombras deslocadas — sem border-radius,
+   sem sombra borrada. É assim que uma janela de menu de 16 bits é montada. */
+
+.frame {
+  position: relative;
+  background: var(--color-panel);
+  box-shadow:
+    0 -4px var(--color-stone), 0 4px var(--color-stone),
+    -4px 0 var(--color-stone), 4px 0 var(--color-stone),
+    0 -8px var(--color-ink), 0 8px var(--color-ink),
+    -8px 0 var(--color-ink), 8px 0 var(--color-ink);
+}
+
+.frame-gold {
+  background: var(--color-panel);
+  box-shadow:
+    0 -4px var(--color-gold-deep), 0 4px var(--color-gold-deep),
+    -4px 0 var(--color-gold-deep), 4px 0 var(--color-gold-deep),
+    0 -8px var(--color-ink), 0 8px var(--color-ink),
+    -8px 0 var(--color-ink), 8px 0 var(--color-ink);
+}
+
+.frame-thin {
+  background: var(--color-panel);
+  box-shadow:
+    0 -3px var(--color-stone), 0 3px var(--color-stone),
+    -3px 0 var(--color-stone), 3px 0 var(--color-stone);
+}
+
+/* ─────────────────────────────  botões  ───────────────────────────── */
+
+.btn-craft {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: var(--font-pixel);
+  font-size: 0.8125rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  padding: 1.0625rem 1.5rem;
+  background: var(--color-gold);
+  color: var(--color-ink);
+  border: 0;
+  cursor: pointer;
+  box-shadow:
+    0 -4px var(--color-gold), 0 4px var(--color-gold),
+    -4px 0 var(--color-gold), 4px 0 var(--color-gold),
+    0 8px var(--color-gold-deep), 4px 8px var(--color-gold-deep),
+    -4px 8px var(--color-gold-deep);
+  transition: transform 90ms steps(2), box-shadow 90ms steps(2);
+}
+
+.btn-craft:hover { transform: translateY(-2px); }
+
+.btn-craft:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 -4px var(--color-gold), 0 4px var(--color-gold),
+    -4px 0 var(--color-gold), 4px 0 var(--color-gold);
+}
+
+.btn-ghost-craft {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: var(--font-pixel);
+  font-size: 0.8125rem;
+  line-height: 1;
+  padding: 1.0625rem 1.5rem;
+  color: var(--color-bone);
+  background: transparent;
+  cursor: pointer;
+  box-shadow:
+    0 -4px var(--color-stone), 0 4px var(--color-stone),
+    -4px 0 var(--color-stone), 4px 0 var(--color-stone);
+  transition: color 90ms steps(2), box-shadow 90ms steps(2);
+}
+
+.btn-ghost-craft:hover {
+  color: var(--color-gold);
+  box-shadow:
+    0 -4px var(--color-gold-deep), 0 4px var(--color-gold-deep),
+    -4px 0 var(--color-gold-deep), 4px 0 var(--color-gold-deep);
+}
+
+/* ────────────────────────  barra de XP segmentada  ──────────────────── */
+
+.xp-track {
+  position: relative;
+  height: 1.25rem;
+  background: var(--color-ink);
+  box-shadow:
+    0 -3px var(--color-stone), 0 3px var(--color-stone),
+    -3px 0 var(--color-stone), 3px 0 var(--color-stone);
+}
+
+.xp-fill {
+  height: 100%;
+  background: var(--color-gold);
+  box-shadow: inset 0 4px rgba(255, 255, 255, 0.35), inset 0 -5px var(--color-gold-deep);
+}
+
+/* Entalhes verticais que fatiam a barra — leitura de "unidades", não de porcentagem. */
+.xp-notches {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(10% - 2px),
+    var(--color-ink) calc(10% - 2px),
+    var(--color-ink) 10%
+  );
+  pointer-events: none;
+}
+
+/* ───────────────────────────  cena do herói  ───────────────────────── */
+
+.sky {
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 100%, #3a2a5e 0%, transparent 60%),
+    linear-gradient(to bottom, #0d0a1a 0%, #15102a 45%, #241b3d 100%);
+}
+
+.stars span {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: var(--color-bone);
+  opacity: 0.85;
+}
+
+.ground-scroll {
+  display: flex;
+  width: max-content;
+  animation: scroll-left 34s linear infinite;
+}
+
+@keyframes scroll-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Passo do personagem: sobe e desce em degraus, nunca suave — é um sprite. */
+.walker { animation: bob 0.56s steps(2, end) infinite; }
+
+/* Troca dos dois quadros da caminhada: cada um fica visível meio ciclo. */
+.flick-a, .flick-b { animation: flick 0.56s steps(1, end) infinite; }
+.flick-b { animation-delay: 0.28s; }
+
+@keyframes flick {
+  0%, 49.9%  { opacity: 1; }
+  50%, 100%  { opacity: 0; }
+}
+
+@keyframes bob {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+.twinkle { animation: twinkle 3.2s steps(2, end) infinite; }
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 0.2; }
+}
+
+.float-xp {
+  animation: float-xp 3.4s steps(8, end) infinite;
+  opacity: 0;
+}
+
+@keyframes float-xp {
+  0%   { transform: translateY(6px);   opacity: 0; }
+  12%  { transform: translateY(0);     opacity: 1; }
+  55%  { transform: translateY(-26px); opacity: 1; }
+  75%  { transform: translateY(-38px); opacity: 0; }
+  100% { transform: translateY(-38px); opacity: 0; }
+}
+
+/* Seta "continuar" da caixa de diálogo. */
+.blink { animation: blink 1s steps(1, end) infinite; }
+
+@keyframes blink {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.coin-spin { animation: coin-spin 2.4s steps(4, end) infinite; }
+
+@keyframes coin-spin {
+  0%, 100% { transform: scaleX(1); }
+  25%      { transform: scaleX(0.35); }
+  50%      { transform: scaleX(-1); }
+  75%      { transform: scaleX(0.35); }
+}
+
+/* Máquina de escrever da caixa de diálogo: o JS revela caractere a caractere,
+   então a altura precisa estar reservada para a página não pular. */
+.typing-caret::after {
+  content: "▌";
+  color: var(--color-gold);
+  animation: blink 0.9s steps(1, end) infinite;
+}
+
+/* ───────────────────────  mensagens do sistema  ─────────────────────
+   O aviso de "entrou na fila" usa a mesma moldura das janelas do jogo, em vez
+   do balão arredondado padrão. */
+
+.alert {
+  border: 0;
+  border-radius: 0;
+  font-family: var(--font-sans);
+  box-shadow:
+    0 -4px var(--color-ink), 0 4px var(--color-ink),
+    -4px 0 var(--color-ink), 4px 0 var(--color-ink);
+}
+
+.toast { padding: 1.5rem; }
+
+/* ──────────────────────────  detalhes de texto  ────────────────────── */
+
+.pixel-shadow {
+  text-shadow: 4px 4px 0 var(--color-ink);
+}
+
+.hairline {
+  height: 3px;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-stone) 0,
+    var(--color-stone) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ground-scroll,
+  .walker,
+  .flick-a,
+  .flick-b,
+  .twinkle,
+  .float-xp,
+  .blink,
+  .coin-spin,
+  .typing-caret::after {
+    animation: none !important;
+  }
+  .float-xp { opacity: 1; }
+  .flick-a { opacity: 1; }
+  .flick-b { opacity: 0; }
+}

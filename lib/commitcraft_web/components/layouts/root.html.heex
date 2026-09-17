@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="craft">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <meta name="theme-color" content="#15102a" />
+    <meta
+      name="description"
+      content="O CommitCraft transforma o seu repositório num jogo: commits viram XP, deploys viram conquistas e o projeto ganha nível enquanto você constrói."
+    />
+
+    <.live_title default="CommitCraft — seu projeto, jogável" phx-no-format>
+      {assigns[:page_title]}
+    </.live_title>
+
+    <meta property="og:title" content="CommitCraft — seu projeto, jogável" />
+    <meta
+      property="og:description"
+      content="Commits viram XP. Deploys viram conquistas. Seu projeto ganha nível enquanto você constrói."
+    />
+    <meta property="og:type" content="website" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Archivo:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+  </head>
+  <body>
+    {@inner_content}
+  </body>
+</html>

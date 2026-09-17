@@ -1,0 +1,312 @@
+<.flash kind={:info} flash={@flash} />
+<.flash kind={:error} flash={@flash} />
+
+<header class="relative z-30 border-b-[3px] border-stone/60 bg-void/80 backdrop-blur-sm">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:gap-6 sm:px-6">
+    <a href="/" class="flex min-w-0 items-center gap-3">
+      <.sprite name={:coin} class="h-6 w-6 shrink-0 coin-spin sm:h-7 sm:w-7" />
+      <span class="truncate font-pixel text-sm text-bone sm:text-base md:text-lg">CommitCraft</span>
+    </a>
+
+    <nav class="hidden items-center gap-8 text-sm text-muted md:flex">
+      <a href="#grupo" class="transition-colors hover:text-bone">O grupo</a>
+      <a href="#pontos" class="transition-colors hover:text-bone">Tabela de XP</a>
+      <a href="#conquistas" class="transition-colors hover:text-bone">Conquistas</a>
+      <a href="#moeda" class="transition-colors hover:text-bone">Preço</a>
+    </nav>
+
+    <a
+      href="#fila"
+      class="btn-craft shrink-0 !px-4 !py-3 text-[10px] sm:!px-5 sm:!py-3.5 sm:text-[11px]"
+    >
+      Entrar na fila
+    </a>
+  </div>
+</header>
+
+<%!-- ─────────────────────────── tela de título ─────────────────────────── --%>
+
+<section class="sky relative overflow-hidden">
+  <div class="stars pointer-events-none absolute inset-0" aria-hidden="true">
+    <span
+      :for={i <- 0..47}
+      class="twinkle"
+      style={"left:#{rem(i * 37, 100)}%; top:#{rem(i * 53, 62)}%; animation-delay:#{rem(i * 7, 32) / 10}s"}
+    ></span>
+  </div>
+
+  <div class="relative mx-auto max-w-4xl px-6 pt-12 pb-16 text-center md:pt-16 md:pb-20">
+    <div class="mx-auto mb-12 w-full max-w-sm">
+      <div class="frame px-5 py-4">
+        <div class="mb-3 flex items-baseline justify-between">
+          <span class="font-pixel text-sm text-gold">LV 07</span>
+          <span class="font-pixel text-[10px] text-muted">1.240 / 2.000 XP</span>
+        </div>
+        <div class="xp-track">
+          <div class="xp-fill" style="width: 62%"></div>
+          <div class="xp-notches"></div>
+        </div>
+        <p class="mt-3 text-left text-xs text-muted">
+          projeto <span class="text-bone">commitcraft</span> · 11 dias de sequência
+        </p>
+      </div>
+    </div>
+
+    <h1 class="font-pixel text-[clamp(2.25rem,9vw,5.5rem)] leading-[1.1] text-bone pixel-shadow">
+      CommitCraft
+    </h1>
+
+    <p class="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-muted md:text-xl">
+      Seu repositório já é um jogo. Só faltava alguém contar os pontos.
+    </p>
+  </div>
+
+  <%!-- montanhas em degraus: o horizonte também é feito de pixels --%>
+  <svg
+    class="relative block h-20 w-full md:h-28"
+    viewBox="0 0 1200 90"
+    preserveAspectRatio="none"
+    aria-hidden="true"
+  >
+    <polygon
+      fill="#33285c"
+      points="0,90 0,70 60,70 60,55 140,55 140,40 220,40 220,52 300,52 300,35 400,35 400,60 480,60 480,48 560,48 560,30 660,30 660,58 740,58 740,45 840,45 840,62 920,62 920,38 1020,38 1020,55 1100,55 1100,70 1200,70 1200,90"
+    />
+    <polygon
+      fill="#1c1533"
+      points="0,90 0,80 90,80 90,68 180,68 180,76 280,76 280,60 380,60 380,72 470,72 470,64 570,64 570,78 680,78 680,66 780,66 780,74 880,74 880,62 980,62 980,75 1080,75 1080,68 1200,68 1200,90"
+    />
+  </svg>
+
+  <%!-- o chão: uma fita de commits que rola, e o artesão andando em cima --%>
+  <div class="relative bg-[#1c1533] pt-1">
+    <div class="pointer-events-none absolute inset-x-0 bottom-full z-20 flex justify-center">
+      <div class="relative">
+        <span class="float-xp absolute -top-6 -left-10 font-pixel text-xs text-gold">+5</span>
+        <span
+          class="float-xp absolute -top-4 left-14 font-pixel text-xs text-moss"
+          style="animation-delay:1.7s"
+        >
+          +25
+        </span>
+        <.crafter class="h-20 w-20 md:h-24 md:w-24" />
+      </div>
+    </div>
+
+    <div class="ground-scroll">
+      <div :for={_copy <- 1..2} class="flex">
+        <div
+          :for={block <- @ground}
+          class={[
+            "h-24 w-[186px] shrink-0 border-r-[3px] border-b-[3px] border-ink px-4 py-3 md:h-28",
+            block_tone(block.kind)
+          ]}
+        >
+          <div class="flex items-center justify-between">
+            <span class="font-pixel text-[10px] opacity-80">{block.hash}</span>
+            <span class="font-pixel text-[10px]">{block.xp}</span>
+          </div>
+          <p class="mt-2 text-xs leading-snug text-bone/70">{block.message}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%!-- ──────────────────────── caixa de diálogo ──────────────────────── --%>
+
+<section class="relative z-20 mx-auto -mt-12 max-w-3xl px-8">
+  <div class="frame px-7 py-6 md:px-9 md:py-7">
+    <div class="flex items-start gap-4">
+      <span class="mt-1.5 font-pixel text-sm text-gold" aria-hidden="true">&#9654;</span>
+      <p class="relative flex-1 text-base leading-relaxed text-bone md:text-lg">
+        <span class="opacity-0">{@pitch}</span>
+        <span class="absolute inset-0" aria-hidden="true" data-typewriter>{@pitch}</span>
+      </p>
+    </div>
+    <div class="mt-5 flex justify-end">
+      <span class="blink font-pixel text-xs text-gold" aria-hidden="true">&#9660;</span>
+    </div>
+  </div>
+
+  <div class="mt-12 flex flex-wrap items-center justify-center gap-5">
+    <a href="#fila" class="btn-craft">Entrar na fila</a>
+    <a href="#pontos" class="btn-ghost-craft">Ver como pontua</a>
+  </div>
+</section>
+
+<%!-- ───────────────────────────── o grupo ───────────────────────────── --%>
+
+<section id="grupo" class="mx-auto max-w-5xl scroll-mt-24 px-8 py-28 md:py-36">
+  <h2 class="font-pixel text-xl leading-snug text-bone md:text-2xl">O grupo</h2>
+  <p class="mt-5 max-w-xl text-base leading-relaxed text-muted">
+    O CommitCraft não te pede relatório. Ele recruta as ferramentas que você já usa
+    e deixa cada uma cuidar de um tipo de acontecimento.
+  </p>
+
+  <ul class="mt-12 space-y-6">
+    <li
+      :for={member <- @party}
+      class="frame flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-center sm:gap-7"
+    >
+      <div class="frame-thin flex h-16 w-16 shrink-0 items-center justify-center">
+        <.sprite name={member.sprite} class="h-10 w-10" />
+      </div>
+
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span class="font-pixel text-sm text-bone">{member.name}</span>
+          <span class="text-sm text-violet">{member.role}</span>
+          <span :if={member.status == :soon} class="font-pixel text-[10px] text-muted">
+            em breve
+          </span>
+        </div>
+        <p class="mt-2 text-sm leading-relaxed text-muted">{member.duty}</p>
+      </div>
+
+      <div class="shrink-0 sm:text-right">
+        <p class="text-xs text-muted">alimenta</p>
+        <p class="mt-1 font-pixel text-[11px] leading-relaxed text-gold">{member.feeds}</p>
+      </div>
+    </li>
+  </ul>
+</section>
+
+<%!-- ──────────────────────────── tabela de XP ──────────────────────────── --%>
+
+<section
+  id="pontos"
+  class="scroll-mt-24 border-y-[3px] border-stone/50 bg-[#1a1333] py-28 md:py-36"
+>
+  <div class="mx-auto max-w-5xl px-8">
+    <h2 class="font-pixel text-xl leading-snug text-bone md:text-2xl">Tabela de XP</h2>
+    <p class="mt-5 max-w-xl text-base leading-relaxed text-muted">
+      Os números são públicos e iguais para todo mundo. Nada de pontuação secreta —
+      se dá para farmar, dá para conferir.
+    </p>
+
+    <div class="mt-12 overflow-x-auto">
+      <table class="w-full min-w-[520px] border-collapse text-left">
+        <thead>
+          <tr class="border-b-[3px] border-stone">
+            <th class="pb-4 font-pixel text-[11px] font-normal text-gold">Acontecimento</th>
+            <th class="pb-4 font-pixel text-[11px] font-normal text-gold">Quem conta</th>
+            <th class="pb-4 text-right font-pixel text-[11px] font-normal text-gold">XP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :for={row <- @xp_table} class="border-b border-stone/40">
+            <td class="py-4 pr-6 text-sm text-bone">{row.event}</td>
+            <td class="py-4 pr-6 text-sm text-muted">{row.source}</td>
+            <td class={["py-4 text-right font-pixel text-sm", xp_tone(row.tone)]}>
+              {if row.xp > 0, do: "+#{row.xp}", else: row.xp}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="mt-8 text-sm text-muted">
+      Quebrar a produção custa XP porque consertar dá XP de volta. O saldo de um dia ruim é zero,
+      não punição.
+    </p>
+  </div>
+</section>
+
+<%!-- ─────────────────────────── conquistas ─────────────────────────── --%>
+
+<section id="conquistas" class="mx-auto max-w-5xl scroll-mt-24 px-8 py-28 md:py-36">
+  <h2 class="font-pixel text-xl leading-snug text-bone md:text-2xl">Conquistas</h2>
+  <p class="mt-5 max-w-xl text-base leading-relaxed text-muted">
+    Algumas você consegue sem querer. Outras vão te fazer tomar decisões questionáveis
+    só para ver a medalha cair.
+  </p>
+
+  <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+      :for={badge <- @achievements}
+      class={["frame px-6 py-6", !badge.unlocked && "opacity-70"]}
+    >
+      <.sprite
+        name={:coin}
+        class="h-9 w-9"
+        recolor={if badge.unlocked, do: rarity_paint(badge.rarity), else: locked_paint()}
+      />
+      <h3 class={[
+        "mt-5 font-pixel text-[13px] leading-snug",
+        if(badge.unlocked, do: "text-bone", else: "text-muted")
+      ]}>
+        {badge.name}
+      </h3>
+      <p class="mt-3 text-sm leading-relaxed text-muted">{badge.how}</p>
+      <p class="mt-4 flex items-center gap-2 font-pixel text-[10px]">
+        <span class={rarity_text(badge.rarity)}>{badge.rarity}</span>
+        <span :if={!badge.unlocked} class="text-muted/60">· ainda não</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<%!-- ───────────────────────────── a moeda ───────────────────────────── --%>
+
+<section
+  id="moeda"
+  class="scroll-mt-24 border-y-[3px] border-stone/50 bg-[#1a1333] py-28 md:py-36"
+>
+  <div class="mx-auto flex max-w-2xl flex-col items-center gap-8 px-8 text-center">
+    <.sprite name={:coin} class="h-14 w-14 coin-spin" />
+    <h2 class="font-pixel text-xl leading-snug text-bone md:text-2xl">
+      O jogo é de graça
+    </h2>
+    <p class="max-w-xl text-base leading-relaxed text-muted">
+      Não existe plano, teto de projetos nem tela de upgrade. Eu construí o CommitCraft
+      porque queria jogá-lo. Se ele te fizer rir ou te fizer commitar num domingo,
+      joga uma moeda na máquina — e se não fizer, também está tudo certo.
+    </p>
+    <a href="#fila" class="btn-ghost-craft">Deixar uma moeda</a>
+  </div>
+</section>
+
+<%!-- ────────────────────────── entrar na fila ────────────────────────── --%>
+
+<section id="fila" class="mx-auto max-w-2xl scroll-mt-24 px-8 py-28 md:py-36">
+  <div class="frame px-7 py-9 md:px-10">
+    <h2 class="font-pixel text-lg leading-snug text-bone md:text-xl">Entrar na fila</h2>
+    <p class="mt-5 text-base leading-relaxed text-muted">
+      O CommitCraft ainda está sendo construído — de commit em commit, como tinha que ser.
+      Deixa seu e-mail e eu te chamo quando der para conectar o primeiro repositório.
+    </p>
+
+    <.form
+      :let={f}
+      for={%{}}
+      as={:signup}
+      action={~p"/fila"}
+      class="mt-8 flex flex-col gap-4 sm:flex-row"
+    >
+      <input
+        type="email"
+        name={f[:email].name}
+        required
+        placeholder="voce@exemplo.com"
+        aria-label="Seu e-mail"
+        class="min-w-0 flex-1 border-0 bg-ink px-4 py-4 text-bone placeholder:text-muted/60 focus:outline-none focus-visible:outline-3 focus-visible:outline-gold"
+      />
+      <button type="submit" class="btn-craft justify-center">Entrar</button>
+    </.form>
+
+    <p class="mt-6 text-xs leading-relaxed text-muted">
+      Um e-mail quando abrir, e mais nenhum. Sem newsletter, sem "dicas de produtividade".
+    </p>
+  </div>
+</section>
+
+<footer class="border-t-[3px] border-stone/50 py-12">
+  <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-6 text-sm text-muted sm:flex-row">
+    <div class="flex items-center gap-3">
+      <.sprite name={:coin} class="h-5 w-5" />
+      <span class="font-pixel text-xs text-bone">CommitCraft</span>
+    </div>
+    <p>Feito por diversão, em Elixir e Phoenix.</p>
+  </div>
+</footer>
