@@ -1,6 +1,3 @@
-<.flash kind={:info} flash={@flash} />
-<.flash kind={:error} flash={@flash} />
-
 <header class="relative z-30 border-b-[3px] border-stone/60 bg-void/80 backdrop-blur-sm">
   <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:gap-6 sm:px-6">
     <a href="/" class="flex min-w-0 items-center gap-3">
@@ -14,13 +11,6 @@
       <a href="#conquistas" class="transition-colors hover:text-bone">Conquistas</a>
       <a href="#moeda" class="transition-colors hover:text-bone">Preço</a>
     </nav>
-
-    <a
-      href="#fila"
-      class="btn-craft shrink-0 !px-4 !py-3 text-[10px] sm:!px-5 sm:!py-3.5 sm:text-[11px]"
-    >
-      Entrar na fila
-    </a>
   </div>
 </header>
 
@@ -130,8 +120,8 @@
   </div>
 
   <div class="mt-12 flex flex-wrap items-center justify-center gap-5">
-    <a href="#fila" class="btn-craft">Entrar na fila</a>
-    <a href="#pontos" class="btn-ghost-craft">Ver como pontua</a>
+    <a href="#pontos" class="btn-craft">Ver como pontua</a>
+    <a href="#conquistas" class="btn-ghost-craft">Ver as conquistas</a>
   </div>
 </section>
 
@@ -263,40 +253,8 @@
       porque queria jogá-lo. Se ele te fizer rir ou te fizer commitar num domingo,
       joga uma moeda na máquina — e se não fizer, também está tudo certo.
     </p>
-    <a href="#fila" class="btn-ghost-craft">Deixar uma moeda</a>
-  </div>
-</section>
-
-<%!-- ────────────────────────── entrar na fila ────────────────────────── --%>
-
-<section id="fila" class="mx-auto max-w-2xl scroll-mt-24 px-8 py-28 md:py-36">
-  <div class="frame px-7 py-9 md:px-10">
-    <h2 class="font-pixel text-lg leading-snug text-bone md:text-xl">Entrar na fila</h2>
-    <p class="mt-5 text-base leading-relaxed text-muted">
-      O CommitCraft ainda está sendo construído — de commit em commit, como tinha que ser.
-      Deixa seu e-mail e eu te chamo quando der para conectar o primeiro repositório.
-    </p>
-
-    <.form
-      :let={f}
-      for={%{}}
-      as={:signup}
-      action={~p"/fila"}
-      class="mt-8 flex flex-col gap-4 sm:flex-row"
-    >
-      <input
-        type="email"
-        name={f[:email].name}
-        required
-        placeholder="voce@exemplo.com"
-        aria-label="Seu e-mail"
-        class="min-w-0 flex-1 border-0 bg-ink px-4 py-4 text-bone placeholder:text-muted/60 focus:outline-none focus-visible:outline-3 focus-visible:outline-gold"
-      />
-      <button type="submit" class="btn-craft justify-center">Entrar</button>
-    </.form>
-
-    <p class="mt-6 text-xs leading-relaxed text-muted">
-      Um e-mail quando abrir, e mais nenhum. Sem newsletter, sem "dicas de produtividade".
+    <p class="font-pixel text-[11px] leading-relaxed text-muted/70">
+      Ainda está sendo construído — de commit em commit.
     </p>
   </div>
 </section>

@@ -311,21 +311,6 @@ svg { shape-rendering: crispEdges; }
   animation: blink 0.9s steps(1, end) infinite;
 }
 
-/* ───────────────────────  mensagens do sistema  ─────────────────────
-   O aviso de "entrou na fila" usa a mesma moldura das janelas do jogo, em vez
-   do balão arredondado padrão. */
-
-.alert {
-  border: 0;
-  border-radius: 0;
-  font-family: var(--font-sans);
-  box-shadow:
-    0 -4px var(--color-ink), 0 4px var(--color-ink),
-    -4px 0 var(--color-ink), 4px 0 var(--color-ink);
-}
-
-.toast { padding: 1.5rem; }
-
 /* ──────────────────────────  detalhes de texto  ────────────────────── */
 
 .pixel-shadow {

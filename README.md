@@ -8,10 +8,13 @@ Sem assinatura e sem plano pago. Se o jogo for útil, dá para deixar uma moeda.
 
 ## Estado atual
 
-A landing page está pronta e o formulário da lista de espera grava no banco.
-O jogo em si ainda não existe: não há autenticação, integração com GitHub,
-Vercel ou Stripe, nem motor de XP. Os números que aparecem na página são
+Só a landing page. O jogo não existe ainda: não há autenticação, integração com
+GitHub, Vercel ou Stripe, nem motor de XP. Os números que aparecem na página são
 ilustrativos e vivem em `lib/commitcraft_web/controllers/page_controller.ex`.
+
+A página não coleta nada e não tem formulário nenhum — enquanto o jogo não
+estiver pronto, ela não promete acesso a quem ainda não pode entrar. O banco
+existe, mas ainda sem tabelas.
 
 ## Rodando
 

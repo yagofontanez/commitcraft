@@ -1,8 +1,6 @@
 defmodule CommitCraftWeb.PageController do
   use CommitCraftWeb, :controller
 
-  alias CommitCraft.Waitlist
-
   # O chão do herói: a fita de commits por onde o artesão caminha. Os blocos
   # dourados e de musgo são os eventos raros — venda e deploy — para que a fita
   # já conte, sozinha, como o jogo pontua.
@@ -112,40 +110,5 @@ defmodule CommitCraftWeb.PageController do
     |> assign(:xp_table, @xp_table)
     |> assign(:achievements, @achievements)
     |> render(:home)
-  end
-
-  def join(conn, %{"signup" => params}) do
-    case Waitlist.create_signup(params) do
-      {:ok, _signup} ->
-        flash_back(conn, :info, "Pronto. Você está na fila — te chamo quando abrir.")
-
-      {:error, changeset} ->
-        if duplicate?(changeset) do
-          # Já estar na lista não é erro do ponto de vista de quem digitou.
-          flash_back(conn, :info, "Esse e-mail já estava na fila. Seu lugar está guardado.")
-        else
-          flash_back(conn, :error, first_error(changeset))
-        end
-    end
-  end
-
-  defp flash_back(conn, kind, message) do
-    conn
-    |> put_flash(kind, message)
-    |> redirect(to: ~p"/#fila")
-  end
-
-  defp duplicate?(changeset) do
-    Enum.any?(changeset.errors, fn
-      {:email, {_message, opts}} -> opts[:constraint] == :unique
-      _other -> false
-    end)
-  end
-
-  defp first_error(changeset) do
-    changeset.errors
-    |> Keyword.get(:email, {"não deu certo", []})
-    |> elem(0)
-    |> then(&"Esse e-mail #{&1}.")
   end
 end

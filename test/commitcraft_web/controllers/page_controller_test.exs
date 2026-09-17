@@ -1,8 +1,6 @@
 defmodule CommitCraftWeb.PageControllerTest do
   use CommitCraftWeb.ConnCase
 
-  alias CommitCraft.Waitlist
-
   describe "GET /" do
     test "mostra a promessa e as âncoras do menu", %{conn: conn} do
       html = conn |> get(~p"/") |> html_response(200)
@@ -10,7 +8,7 @@ defmodule CommitCraftWeb.PageControllerTest do
       assert html =~ "CommitCraft"
       assert html =~ "Seu repositório já é um jogo"
 
-      for ancora <- ~w(#grupo #pontos #conquistas #moeda #fila) do
+      for ancora <- ~w(#grupo #pontos #conquistas #moeda) do
         assert html =~ ancora, "o menu deveria apontar para #{ancora}"
       end
     end
@@ -37,33 +35,23 @@ defmodule CommitCraftWeb.PageControllerTest do
 
       assert html =~ "Cada commit vira XP"
     end
-  end
 
-  describe "POST /fila" do
-    test "guarda o e-mail e confirma", %{conn: conn} do
-      conn = post(conn, ~p"/fila", %{"signup" => %{"email" => "novo@exemplo.com"}})
+    test "não promete lista de espera enquanto o jogo não existe", %{conn: conn} do
+      html = conn |> get(~p"/") |> html_response(200)
 
-      assert redirected_to(conn) == "/#fila"
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "está na fila"
-      assert [%{email: "novo@exemplo.com"}] = Waitlist.list_waitlist_signups()
+      refute html =~ "fila"
+      refute html =~ "<form"
     end
 
-    test "quem já está na fila recebe confirmação, não erro", %{conn: conn} do
-      {:ok, _} = Waitlist.create_signup(%{email: "repetido@exemplo.com"})
+    test "todo link interno aponta para uma seção que existe na página", %{conn: conn} do
+      html = conn |> get(~p"/") |> html_response(200)
 
-      conn = post(conn, ~p"/fila", %{"signup" => %{"email" => "Repetido@Exemplo.com"}})
+      destinos = Regex.scan(~r/href="#([\w-]+)"/, html) |> Enum.map(&List.last/1) |> Enum.uniq()
+      assert destinos != []
 
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "já estava na fila"
-      refute Phoenix.Flash.get(conn.assigns.flash, :error)
-      assert length(Waitlist.list_waitlist_signups()) == 1
-    end
-
-    test "explica o que houve quando o endereço não é um e-mail", %{conn: conn} do
-      conn = post(conn, ~p"/fila", %{"signup" => %{"email" => "isso não é e-mail"}})
-
-      assert redirected_to(conn) == "/#fila"
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "não parece um endereço de e-mail"
-      assert Waitlist.list_waitlist_signups() == []
+      for destino <- destinos do
+        assert html =~ ~s(id="#{destino}"), "o link ##{destino} não leva a lugar nenhum"
+      end
     end
   end
 end

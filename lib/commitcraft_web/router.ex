@@ -18,7 +18,6 @@ defmodule CommitCraftWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
-    post "/fila", PageController, :join
   end
 
   # Other scopes may use custom stacks.

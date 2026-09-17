@@ -129,15 +129,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
   targets.forEach(el => observer.observe(el))
 })
-
-// As mensagens de sistema vivem numa página comum, sem LiveView: o `phx-click`
-// do componente padrão não tem quem o escute, então o botão de fechar ficaria
-// inerte. Aqui elas somem no clique e sozinhas depois de alguns segundos.
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll('[role="alert"]').forEach((flash) => {
-    const dismiss = () => flash.remove()
-
-    flash.addEventListener("click", dismiss)
-    setTimeout(dismiss, 6000)
-  })
-})
