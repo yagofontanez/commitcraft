@@ -8,10 +8,42 @@
 
   <%!-- Nome escrito pela pessoa vai na fonte de leitura, não na pixelada: o
         Silkscreen mastiga cedilha e til, e "Ração" fica ilegível. A fonte de
-        pixel fica para o chrome do jogo, que é texto nosso e sem acento. --%>
-  <h1 class="mt-6 text-3xl font-semibold tracking-tight text-bone md:text-4xl">
-    {@project.name}
-  </h1>
+        pixel fica para o chrome do jogo, que é texto nosso e sem acento.
+
+        Renomear abre no próprio título, onde a pessoa está olhando — não numa
+        tela de configurações escondida. --%>
+  <details class="group mt-6" open={@changeset.errors != []}>
+    <summary class="inline-flex cursor-pointer list-none flex-wrap items-baseline gap-x-4 gap-y-1 [&::-webkit-details-marker]:hidden">
+      <h1 class="text-3xl font-semibold tracking-tight text-bone md:text-4xl">
+        {@project.name}
+      </h1>
+      <span class="text-sm text-muted transition-colors group-hover:text-gold">renomear</span>
+    </summary>
+
+    <.form
+      :let={f}
+      for={@changeset}
+      action={~p"/jogar/#{@project.slug}"}
+      method="put"
+      class="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row"
+    >
+      <div class="min-w-0 flex-1">
+        <input
+          type="text"
+          name={f[:name].name}
+          value={Phoenix.HTML.Form.normalize_value("text", f[:name].value || @project.name)}
+          required
+          maxlength="60"
+          aria-label="Novo nome do projeto"
+          class="w-full border-0 bg-ink px-4 py-3.5 text-bone focus:outline-none"
+        />
+        <p :for={{mensagem, _} <- f[:name].errors} class="mt-2 text-xs text-ember">
+          O nome {mensagem}.
+        </p>
+      </div>
+      <button type="submit" class="btn-craft justify-center">Salvar</button>
+    </.form>
+  </details>
 
   <div class="mt-10 max-w-md">
     <.hud progress={@progress}>

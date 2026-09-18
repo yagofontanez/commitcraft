@@ -33,6 +33,7 @@ defmodule CommitCraftWeb.Router do
     get "/jogar", ProjectController, :index
     post "/jogar", ProjectController, :create
     get "/jogar/:slug", ProjectController, :show
+    put "/jogar/:slug", ProjectController, :update
     delete "/jogar/:slug", ProjectController, :delete
   end
 

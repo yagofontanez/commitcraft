@@ -109,6 +109,49 @@ defmodule CommitCraftWeb.ProjectControllerTest do
     end
   end
 
+  describe "PUT /jogar/:slug" do
+    test "renomeia e leva para o endereço novo", %{conn: conn, user: user} do
+      project_fixture(user, %{name: "Teste"})
+
+      conn = put(conn, ~p"/jogar/teste", %{"project" => %{"name" => "Minha Loja"}})
+
+      assert redirected_to(conn) == ~p"/jogar/minha-loja"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Minha Loja"
+      assert Projects.get_project(user, "minha-loja").name == "Minha Loja"
+    end
+
+    test "nome inválido mostra o erro sem perder o que foi digitado", %{conn: conn, user: user} do
+      project_fixture(user, %{name: "Intacto"})
+
+      conn = put(conn, ~p"/jogar/intacto", %{"project" => %{"name" => "x"}})
+      html = html_response(conn, 422)
+
+      # O formulário volta aberto, com o texto recusado ainda no campo.
+      assert html =~ ~s(value="x")
+      assert html =~ "O nome"
+      assert Projects.get_project(user, "intacto").name == "Intacto"
+    end
+
+    test "não renomeia o projeto de outra pessoa", %{conn: conn} do
+      dona = user_fixture()
+      project_fixture(dona, %{name: "Segredo Alheio"})
+
+      conn = put(conn, ~p"/jogar/segredo-alheio", %{"project" => %{"name" => "Roubado"}})
+
+      assert redirected_to(conn) == ~p"/jogar"
+      assert Projects.get_project(dona, "segredo-alheio").name == "Segredo Alheio"
+    end
+
+    test "exige estar logado", %{user: user} do
+      project_fixture(user, %{name: "Intacto"})
+
+      conn = build_conn() |> put(~p"/jogar/intacto", %{"project" => %{"name" => "Roubado"}})
+
+      assert redirected_to(conn) == ~p"/"
+      assert Projects.get_project(user, "intacto").name == "Intacto"
+    end
+  end
+
   describe "DELETE /jogar/:slug" do
     test "apaga e volta para a lista", %{conn: conn, user: user} do
       project_fixture(user, %{name: "Descartável"})

@@ -35,11 +35,28 @@ defmodule CommitCraftWeb.ProjectController do
         |> redirect(to: ~p"/jogar")
 
       project ->
+        render_show(conn, project, Projects.change_project(project))
+    end
+  end
+
+  def update(conn, %{"slug" => slug, "project" => params}) do
+    case Projects.rename_project(conn.assigns.current_user, slug, params) do
+      {:ok, project} ->
         conn
-        |> assign(:page_title, project.name)
-        |> assign(:project, project)
-        |> assign(:progress, Level.progress(project.xp))
-        |> render(:show)
+        |> put_flash(:info, "Agora se chama \"#{project.name}\".")
+        |> redirect(to: ~p"/jogar/#{project.slug}")
+
+      {:error, :not_found} ->
+        conn
+        |> put_flash(:error, "Não encontrei esse projeto.")
+        |> redirect(to: ~p"/jogar")
+
+      {:error, changeset} ->
+        # Renderiza de novo em vez de redirecionar, para não jogar fora o que a
+        # pessoa digitou junto com o erro.
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render_show(Projects.get_project(conn.assigns.current_user, slug), changeset)
     end
   end
 
@@ -55,6 +72,15 @@ defmodule CommitCraftWeb.ProjectController do
         |> put_flash(:error, "Não encontrei esse projeto.")
         |> redirect(to: ~p"/jogar")
     end
+  end
+
+  defp render_show(conn, project, changeset) do
+    conn
+    |> assign(:page_title, project.name)
+    |> assign(:project, project)
+    |> assign(:progress, Level.progress(project.xp))
+    |> assign(:changeset, changeset)
+    |> render(:show)
   end
 
   defp render_index(conn, changeset) do

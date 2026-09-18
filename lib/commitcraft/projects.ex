@@ -48,42 +48,74 @@ defmodule CommitCraft.Projects do
   Cria um projeto, derivando o apelido da URL a partir do nome.
 
   Se o apelido já estiver em uso naquela conta, ganha um número no fim —
-  "site", "site-2", "site-3". A tentativa é repetida contra o banco em vez de
-  ser decidida por uma consulta antes: entre consultar e inserir cabe outra
-  requisição da mesma pessoa em outra aba.
+  "site", "site-2", "site-3".
   """
   def create_project(%User{} = user, attrs) do
-    nome = attrs |> Map.get("name", Map.get(attrs, :name, "")) |> to_string() |> String.trim()
-
-    inserir(user, attrs, slugify(nome), 1)
+    com_apelido_livre(attrs, fn atributos ->
+      %Project{user_id: user.id}
+      |> Project.changeset(atributos)
+      |> Repo.insert()
+    end)
   end
 
+  @doc """
+  Troca o nome de um projeto — e o apelido na URL junto.
+
+  Deixar o apelido preso ao nome antigo faria a URL mentir para sempre sobre o
+  que o projeto é. O preço é que um link salvo do endereço antigo para de
+  funcionar; hoje ninguém depende desses endereços, e quando o webhook existir
+  ele vai usar um identificador próprio, não o apelido.
+
+  Devolve `{:error, :not_found}` quando o projeto não é da pessoa — inexistente
+  e alheio respondem igual, de propósito.
+  """
+  def rename_project(%User{} = user, slug, attrs) do
+    case get_project(user, slug) do
+      nil ->
+        {:error, :not_found}
+
+      project ->
+        com_apelido_livre(attrs, fn atributos ->
+          project
+          |> Project.changeset(atributos)
+          |> Repo.update()
+        end)
+    end
+  end
+
+  # Quantas variações de apelido tentar antes de desistir.
   @tentativas 25
 
-  defp inserir(user, attrs, base, tentativa) do
-    slug = if tentativa == 1, do: base, else: "#{base}-#{tentativa}"
+  # Criar e renomear fazem a mesma dança: derivar o apelido do nome, tentar
+  # gravar, e somar um número no fim se aquele já estiver ocupado. A tentativa
+  # é repetida contra o banco em vez de decidida por uma consulta antes, porque
+  # entre consultar e gravar cabe outra requisição da mesma pessoa em outra aba.
+  defp com_apelido_livre(attrs, salvar) do
+    atributos = stringify(attrs)
+    base = atributos |> Map.get("name", "") |> to_string() |> String.trim() |> slugify()
 
-    resultado =
-      %Project{user_id: user.id}
-      |> Project.changeset(Map.put(stringify(attrs), "slug", slug))
-      |> Repo.insert()
+    tentar(atributos, base, 1, salvar)
+  end
 
-    case resultado do
+  defp tentar(atributos, base, tentativa, salvar) do
+    apelido = if tentativa == 1, do: base, else: "#{base}-#{tentativa}"
+
+    case salvar.(Map.put(atributos, "slug", apelido)) do
       {:ok, project} ->
         {:ok, project}
 
       {:error, changeset} ->
-        if tentativa < @tentativas and slug_ocupado?(changeset) do
-          inserir(user, attrs, base, tentativa + 1)
+        if tentativa < @tentativas and apelido_ocupado?(changeset) do
+          tentar(atributos, base, tentativa + 1, salvar)
         else
-          # O erro de slug é nosso, não de quem digitou; não faz sentido
-          # mostrar "slug já está em uso" para quem nunca viu esse campo.
+          # O erro de apelido é nosso, não de quem digitou; não faz sentido
+          # mostrar "slug já está em uso" para quem só viu um campo "nome".
           {:error, %{changeset | errors: Keyword.delete(changeset.errors, :slug)}}
         end
     end
   end
 
-  defp slug_ocupado?(changeset) do
+  defp apelido_ocupado?(changeset) do
     Enum.any?(changeset.errors, fn
       {:slug, {_mensagem, opts}} -> opts[:constraint] == :unique
       _outro -> false

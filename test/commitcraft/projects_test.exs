@@ -96,6 +96,79 @@ defmodule CommitCraft.ProjectsTest do
     end
   end
 
+  describe "rename_project/3" do
+    test "troca o nome e o apelido junto" do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "Teste"})
+      assert project.slug == "teste"
+
+      assert {:ok, renomeado} = Projects.rename_project(user, "teste", %{"name" => "Minha Loja"})
+      assert renomeado.id == project.id
+      assert renomeado.name == "Minha Loja"
+      assert renomeado.slug == "minha-loja"
+    end
+
+    test "preserva o XP acumulado" do
+      user = user_fixture()
+      project_fixture(user, %{name: "Veterano", xp: 6940})
+
+      assert {:ok, renomeado} =
+               Projects.rename_project(user, "veterano", %{"name" => "Outro Nome"})
+
+      assert renomeado.xp == 6940
+    end
+
+    test "salvar o mesmo nome não quebra no apelido dele próprio" do
+      user = user_fixture()
+      project_fixture(user, %{name: "Igual"})
+
+      assert {:ok, renomeado} = Projects.rename_project(user, "igual", %{"name" => "Igual"})
+      assert renomeado.slug == "igual"
+    end
+
+    test "desvia do apelido de um projeto que já existe" do
+      user = user_fixture()
+      project_fixture(user, %{name: "Site"})
+      project_fixture(user, %{name: "Outro"})
+
+      assert {:ok, renomeado} = Projects.rename_project(user, "outro", %{"name" => "Site"})
+      assert renomeado.slug == "site-2"
+    end
+
+    test "recusa nome inválido sem mexer no projeto" do
+      user = user_fixture()
+      project_fixture(user, %{name: "Intacto"})
+
+      assert {:error, changeset} = Projects.rename_project(user, "intacto", %{"name" => "x"})
+      assert changeset.errors[:name]
+      refute changeset.errors[:slug]
+
+      assert Projects.get_project(user, "intacto").name == "Intacto"
+    end
+
+    test "não renomeia o projeto de outra pessoa" do
+      dona = user_fixture()
+      estranho = user_fixture()
+      project_fixture(dona, %{name: "Meu"})
+
+      assert Projects.rename_project(estranho, "meu", %{"name" => "Roubado"}) ==
+               {:error, :not_found}
+
+      assert Projects.get_project(dona, "meu").name == "Meu"
+    end
+
+    test "apelido inexistente e apelido alheio respondem igual" do
+      user = user_fixture()
+      alheio = project_fixture(user_fixture(), %{name: "Alheio"})
+
+      assert Projects.rename_project(user, "nunca-existiu", %{"name" => "Oi"}) ==
+               {:error, :not_found}
+
+      assert Projects.rename_project(user, alheio.slug, %{"name" => "Oi"}) ==
+               {:error, :not_found}
+    end
+  end
+
   describe "delete_project/2" do
     test "apaga o próprio projeto" do
       user = user_fixture()
