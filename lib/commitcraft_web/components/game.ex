@@ -45,6 +45,24 @@ defmodule CommitCraftWeb.Game do
   end
 
   @doc """
+  A cor de uma raridade, usada para repintar o sprite da medalha.
+
+  Devolve um mapa de troca de paleta aceito por `CommitCraftWeb.Pixel.sprite/1`.
+  """
+  def rarity_paint("Lendário"), do: %{"g" => "#ffc24b", "o" => "#c8871f"}
+  def rarity_paint("Raro"), do: %{"g" => "#7c6be8", "o" => "#5b4cb8"}
+  def rarity_paint("Incomum"), do: %{"g" => "#6fbf73", "o" => "#3f7a45"}
+  def rarity_paint(_), do: %{"g" => "#c9d4e8", "o" => "#7d879b"}
+
+  @doc "Medalha apagada: a conquista existe, mas ainda não foi conseguida."
+  def locked_paint, do: %{"g" => "#2f2450", "o" => "#241b3d", "k" => "#1c1533"}
+
+  def rarity_text("Lendário"), do: "text-gold"
+  def rarity_text("Raro"), do: "text-violet"
+  def rarity_text("Incomum"), do: "text-moss"
+  def rarity_text(_), do: "text-muted"
+
+  @doc """
   O cartão de uma integração que se conecta colando um segredo.
 
   Mostra o endereço que o serviço precisa chamar e recebe o segredo de

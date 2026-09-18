@@ -1,6 +1,7 @@
 defmodule CommitCraftWeb.PageController do
   use CommitCraftWeb, :controller
 
+  alias CommitCraft.Game.Achievements
   alias CommitCraft.Game.Level
   alias CommitCraft.Game.Rules
 
@@ -69,44 +70,15 @@ defmodule CommitCraftWeb.PageController do
     end)
   end
 
-  @achievements [
-    %{
-      name: "Madrugada Adentro",
-      how: "Um commit entre 3h e 5h da manhã.",
-      rarity: "Raro",
-      unlocked: true
-    },
-    %{
-      name: "Sexta, 18h",
-      how: "Deploy em produção numa sexta à noite.",
-      rarity: "Lendário",
-      unlocked: true
-    },
-    %{
-      name: "Faxina",
-      how: "Um pull request que apaga mais linhas do que escreve.",
-      rarity: "Incomum",
-      unlocked: true
-    },
-    %{
-      name: "Não Fui Eu",
-      how: "Reverter o próprio commit em menos de dez minutos.",
-      rarity: "Comum",
-      unlocked: true
-    },
-    %{
-      name: "Primeiro Sangue",
-      how: "Alguém que você não conhece cria uma conta.",
-      rarity: "Raro",
-      unlocked: false
-    },
-    %{
-      name: "Maratona",
-      how: "Trinta dias seguidos sem quebrar a sequência.",
-      rarity: "Lendário",
-      unlocked: false
-    }
-  ]
+  # As conquistas vêm do catálogo do jogo. As duas últimas aparecem bloqueadas
+  # só para a página mostrar como é ter uma medalha ainda por conquistar.
+  @bloqueadas ~w(semana_cheia maratona)
+
+  defp achievements do
+    Enum.map(Achievements.catalog(), fn conquista ->
+      Map.put(conquista, :unlocked, conquista.key not in @bloqueadas)
+    end)
+  end
 
   # O projeto de exemplo do topo da página. 6.940 de XP dá nível 7 com
   # 1.240 de 2.000 — os mesmos números que a página sempre mostrou, agora
@@ -123,7 +95,7 @@ defmodule CommitCraftWeb.PageController do
     |> assign(:ground, @ground)
     |> assign(:party, @party)
     |> assign(:xp_table, xp_table())
-    |> assign(:achievements, @achievements)
+    |> assign(:achievements, achievements())
     |> render(:home)
   end
 end

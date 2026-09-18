@@ -17,7 +17,8 @@ conectar três fontes de XP: **GitHub** (commit na branch principal, pull reques
 mesclado, issue fechada), **Vercel** (deploy em produção soma, build quebrado
 custa) e **Stripe** (a primeira venda vale muito, as seguintes viram rotina).
 
-O que ainda não existe: conquistas e sequência de dias.
+Existem também **sequência de dias** (cada sete dias seguidos com commit rendem
+XP) e **conquistas** — medalhas por *como* você trabalhou, não por quanto.
 
 ## Login
 
@@ -183,6 +184,24 @@ WEBHOOK_BASE_URL=https://algo.ngrok-free.app mix phx.server
 
 Sem `WEBHOOK_BASE_URL` o repositório conecta mas o webhook não é instalado — e a
 tela do projeto diz exatamente isso, com um botão para tentar de novo.
+
+## Sequência e conquistas
+
+**Conquista não dá XP.** XP mede quanto trabalho foi feito; conquista marca que
+tipo de coisa você fez. Misturar os dois faria uma medalha valer tantos commits,
+e aí ela vira farm em vez de piada.
+
+**O fuso importa mais do que parece.** Um commit às 22h no Brasil é 01h do dia
+seguinte em UTC — contar em UTC quebraria a sequência de quem trabalha à noite,
+justamente quem mais liga para ela. `CommitCraft.Game.Streak` conta os dias num
+deslocamento fixo (UTC-3 por padrão, `:game_utc_offset_hours`). O Brasil não tem
+horário de verão desde 2019, então isso evita arrastar um banco de fusos inteiro
+como dependência.
+
+Ambas são funções puras sobre os eventos já gravados
+(`CommitCraft.Game.Achievements.earned/1`), então o catálogo pode ser reavaliado
+a qualquer momento — inclusive para conquistas criadas depois de o projeto já
+estar em andamento.
 
 ## Testes
 

@@ -9,6 +9,10 @@ defmodule CommitCraft.Projects do
   import Ecto.Query, warn: false
 
   alias CommitCraft.Accounts.User
+  alias CommitCraft.Game.Achievements
+  alias CommitCraft.Game.Rules
+  alias CommitCraft.Game.Streak
+  alias CommitCraft.Projects.Achievement
   alias CommitCraft.Projects.Event
   alias CommitCraft.Projects.Project
   alias CommitCraft.Projects.Webhook
@@ -203,8 +207,89 @@ defmodule CommitCraft.Projects do
     Repo.transaction(fn ->
       registrados = Enum.flat_map(acontecimentos, &registrar(project, &1))
 
-      %{project: recalcular_xp(project), events: registrados}
+      # A sequência de dias é consequência dos commits, não uma entrega à parte:
+      # só dá para saber que ela chegou a sete depois de gravar o commit de
+      # hoje. Por isso ela é avaliada aqui, e não nas regras.
+      marcos = Enum.flat_map(marcos_de_sequencia(project), &registrar(project, &1))
+
+      todos = todos_os_eventos(project)
+
+      %{
+        project: recalcular_xp(project),
+        events: registrados ++ marcos,
+        achievements: destravar_conquistas(project, todos)
+      }
     end)
+  end
+
+  @doc "A sequência de dias seguidos com commit, viva agora."
+  def current_streak(%Project{} = project) do
+    project
+    |> momentos_de_commit()
+    |> Streak.current()
+  end
+
+  @doc "As conquistas que um projeto já tem, da mais recente para a mais antiga."
+  def list_achievements(%Project{} = project) do
+    Achievement
+    |> where(project_id: ^project.id)
+    |> order_by(desc: :unlocked_at, desc: :id)
+    |> Repo.all()
+  end
+
+  defp momentos_de_commit(project) do
+    Event
+    |> where(project_id: ^project.id, kind: "commit")
+    |> select([e], e.occurred_at)
+    |> Repo.all()
+  end
+
+  defp todos_os_eventos(project) do
+    Event
+    |> where(project_id: ^project.id)
+    |> Repo.all()
+  end
+
+  # Cada múltiplo de sete dias seguidos rende XP uma vez. O identificador é o
+  # marco alcançado, então reprocessar a mesma entrega não paga de novo.
+  defp marcos_de_sequencia(project) do
+    sequencia = project |> momentos_de_commit() |> Streak.current()
+
+    if sequencia >= 7 do
+      for semanas <- 1..div(sequencia, 7) do
+        dias = semanas * 7
+
+        %{
+          kind: "streak_week",
+          title: "#{dias} dias seguidos",
+          xp: Rules.xp_for(:streak_week),
+          occurred_at: DateTime.utc_now(:second),
+          external_id: "streak-#{dias}",
+          meta: %{"days" => dias}
+        }
+      end
+    else
+      []
+    end
+  end
+
+  defp destravar_conquistas(project, eventos) do
+    ja_tem = project |> list_achievements() |> MapSet.new(& &1.key)
+    agora = DateTime.utc_now(:second)
+
+    novas =
+      eventos
+      |> Achievements.earned()
+      |> Enum.reject(&MapSet.member?(ja_tem, &1))
+
+    for chave <- novas do
+      {:ok, conquista} =
+        %Achievement{project_id: project.id, key: chave, unlocked_at: agora}
+        |> Repo.insert(on_conflict: :nothing)
+
+      conquista
+    end
+    |> Enum.reject(&is_nil(&1.id))
   end
 
   defp registrar(project, attrs) do

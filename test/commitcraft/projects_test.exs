@@ -96,6 +96,94 @@ defmodule CommitCraft.ProjectsTest do
     end
   end
 
+  describe "record_events/2" do
+    defp commit_em(data, hora, sha) do
+      %{
+        kind: "commit",
+        title: "feat: #{sha}",
+        xp: 5,
+        occurred_at: DateTime.new!(data, Time.new!(hora, 0, 0), "Etc/UTC"),
+        external_id: sha,
+        meta: %{}
+      }
+    end
+
+    test "soma o XP e devolve só o que era novo" do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "Meu"})
+
+      eventos = [commit_em(~D[2026-09-18], 15, "a"), commit_em(~D[2026-09-18], 16, "b")]
+
+      assert {:ok, %{project: atualizado, events: novos}} =
+               Projects.record_events(project, eventos)
+
+      assert atualizado.xp == 10
+      assert length(novos) == 2
+
+      # De novo, os mesmos: nada novo, XP igual.
+      assert {:ok, %{project: outra_vez, events: []}} = Projects.record_events(project, eventos)
+      assert outra_vez.xp == 10
+    end
+
+    test "sete dias seguidos rendem o XP de sequência, uma vez só" do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "Meu"})
+
+      hoje = CommitCraft.Game.Streak.today()
+      eventos = for d <- 6..0//-1, do: commit_em(Date.add(hoje, -d), 15, "sha-#{d}")
+
+      {:ok, %{project: atualizado}} = Projects.record_events(project, eventos)
+
+      # 7 commits (35) + o marco de sete dias (80).
+      assert atualizado.xp == 115
+      assert Projects.current_streak(project) == 7
+
+      # Reprocessar não paga o marco de novo.
+      {:ok, %{project: de_novo}} = Projects.record_events(project, eventos)
+      assert de_novo.xp == 115
+    end
+
+    test "destrava conquista e não destrava duas vezes" do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "Meu"})
+
+      # 6h UTC é 3h em UTC-3: madrugada adentro.
+      madrugada = commit_em(~D[2026-09-18], 6, "sha-madrugada")
+
+      {:ok, %{achievements: primeiras}} = Projects.record_events(project, [madrugada])
+      assert Enum.map(primeiras, & &1.key) == ["madrugada"]
+
+      {:ok, %{achievements: segundas}} =
+        Projects.record_events(project, [commit_em(~D[2026-09-19], 6, "outra")])
+
+      assert segundas == [], "conquista não se ganha duas vezes"
+      assert length(Projects.list_achievements(project)) == 1
+    end
+
+    test "XP negativo não some no total" do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "Meu"})
+
+      eventos = [
+        commit_em(~D[2026-09-18], 15, "a"),
+        %{
+          kind: "broken_build",
+          title: "Build quebrado",
+          xp: -30,
+          occurred_at: ~U[2026-09-18 16:00:00Z],
+          external_id: "quebrou",
+          meta: %{}
+        }
+      ]
+
+      {:ok, %{project: atualizado}} = Projects.record_events(project, eventos)
+
+      # O total é honesto, mesmo negativo; quem segura o piso é a curva de nível.
+      assert atualizado.xp == -25
+      assert CommitCraft.Game.Level.for_xp(atualizado.xp) == 1
+    end
+  end
+
   describe "rename_project/3" do
     test "troca o nome e o apelido junto" do
       user = user_fixture()

@@ -68,7 +68,14 @@ defmodule CommitCraft.Game.Rules do
           title: titulo(pr["title"], "Pull request ##{pr["number"]}"),
           xp: xp_for(:pull_request_merged),
           occurred_at: momento(pr["merged_at"]),
-          external_id: "pr-#{pr["number"]}-merged"
+          external_id: "pr-#{pr["number"]}-merged",
+          # As conquistas leem daqui: "Faxina" precisa saber quantas linhas o
+          # pull request apagou, e isso não cabe numa coluna própria.
+          meta: %{
+            "additions" => pr["additions"],
+            "deletions" => pr["deletions"],
+            "number" => pr["number"]
+          }
         }
       ]
     else

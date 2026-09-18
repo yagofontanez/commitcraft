@@ -18,6 +18,7 @@ defmodule CommitCraft.Projects.Event do
     field :xp, :integer
     field :occurred_at, :utc_datetime
     field :external_id, :string
+    field :meta, :map, default: %{}
 
     belongs_to :project, Project
 
@@ -27,7 +28,7 @@ defmodule CommitCraft.Projects.Event do
   @doc false
   def changeset(event, attrs) do
     event
-    |> cast(attrs, [:kind, :title, :xp, :occurred_at, :external_id])
+    |> cast(attrs, [:kind, :title, :xp, :occurred_at, :external_id, :meta])
     |> validate_required([:kind, :title, :xp, :occurred_at, :external_id])
     |> validate_length(:title, max: 200)
     |> unique_constraint([:project_id, :external_id],

@@ -363,6 +363,8 @@ defmodule CommitCraftWeb.ProjectController do
     |> assign(:events, Projects.list_events(project))
     |> assign(:listening?, Projects.listening?(project))
     |> assign(:webhooks, endereços_prontos(project))
+    |> assign(:streak, Projects.current_streak(project))
+    |> assign(:achievements, Projects.list_achievements(project))
     |> render(:show)
   end
 
