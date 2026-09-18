@@ -185,6 +185,26 @@ WEBHOOK_BASE_URL=https://algo.ngrok-free.app mix phx.server
 Sem `WEBHOOK_BASE_URL` o repositório conecta mas o webhook não é instalado — e a
 tela do projeto diz exatamente isso, com um botão para tentar de novo.
 
+## A tela ao vivo
+
+`/jogar/:slug` é um LiveView. Quando um webhook chega, o processo que atendeu a
+entrega avisa pelo PubSub e a tela de quem estiver olhando se atualiza sozinha —
+barra subindo, evento entrando na linha do tempo, medalha caindo. Sem recarregar
+e sem consultar de tempos em tempos.
+
+Dois detalhes que valem saber antes de mexer:
+
+- **A assinatura do PubSub só acontece em `connected?(socket)`.** O primeiro
+  render é HTTP e morre em seguida; inscrever ali deixaria assinatura órfã.
+- **`on_mount` refaz a checagem de sessão.** O LiveView não passa pelos plugs do
+  router depois do primeiro render, então sem isso o websocket seria uma porta
+  sem porteiro.
+
+As animações usam `phx-mounted`, que só dispara em elemento novo no DOM — é o
+que faz a marcação acertar exatamente o que acabou de chegar, sem piscar o resto
+da tela. E a barra sobe em `steps()`, não deslizando: num jogo de 16 bits o XP
+entra em blocos.
+
 ## Sequência e conquistas
 
 **Conquista não dá XP.** XP mede quanto trabalho foi feito; conquista marca que
@@ -211,7 +231,7 @@ mix test
 
 ## Próximos passos
 
-1. Conectar um repositório a um projeto (aí sim pedindo escopo `repo`).
-2. Webhook do GitHub virando eventos de XP.
-3. O painel do projeto em LiveView, com a barra subindo ao vivo.
-4. Conquistas, linha do tempo, Vercel e Stripe.
+1. Colocar no ar, para as integrações deixarem de depender de um túnel efêmero.
+2. Reavaliar conquistas antigas quando o catálogo crescer — como são funções
+   puras sobre os eventos, dá para destravar retroativamente.
+3. A lista de projetos também ao vivo.
