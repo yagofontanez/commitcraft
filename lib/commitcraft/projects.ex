@@ -203,6 +203,15 @@ defmodule CommitCraft.Projects do
 
   Devolve `{:ok, %{project: project, events: recem_registrados}}`.
   """
+  @doc "O canal de um projeto. Quem estiver com a tela aberta escuta aqui."
+  def topic(%Project{id: id}), do: "project:#{id}"
+  def topic(id) when is_integer(id), do: "project:#{id}"
+
+  @doc "Passa a receber as novidades de um projeto."
+  def subscribe(%Project{} = project) do
+    Phoenix.PubSub.subscribe(CommitCraft.PubSub, topic(project))
+  end
+
   def record_events(%Project{} = project, acontecimentos) when is_list(acontecimentos) do
     Repo.transaction(fn ->
       registrados = Enum.flat_map(acontecimentos, &registrar(project, &1))
@@ -220,6 +229,22 @@ defmodule CommitCraft.Projects do
         achievements: destravar_conquistas(project, todos)
       }
     end)
+    |> case do
+      {:ok, resultado} ->
+        # O aviso sai depois que a transação fechou: mandar de dentro dela
+        # avisaria de algo que ainda poderia ser desfeito.
+        anunciar(resultado)
+        {:ok, resultado}
+
+      erro ->
+        erro
+    end
+  end
+
+  defp anunciar(%{events: [], achievements: []}), do: :ok
+
+  defp anunciar(%{project: project} = resultado) do
+    Phoenix.PubSub.broadcast(CommitCraft.PubSub, topic(project), {:project_advanced, resultado})
   end
 
   @doc "A sequência de dias seguidos com commit, viva agora."

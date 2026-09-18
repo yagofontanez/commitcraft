@@ -46,15 +46,17 @@ defmodule CommitCraftWeb.Router do
 
     get "/jogar", ProjectController, :index
     post "/jogar", ProjectController, :create
-    get "/jogar/:slug", ProjectController, :show
     get "/jogar/:slug/repositorio", ProjectController, :choose_repo
     post "/jogar/:slug/repositorio", ProjectController, :connect_repo
-    delete "/jogar/:slug/repositorio", ProjectController, :disconnect_repo
     post "/jogar/:slug/webhook", ProjectController, :install_webhook
-    put "/jogar/:slug/integracao/:source", ProjectController, :save_integration
-    delete "/jogar/:slug/integracao/:source", ProjectController, :remove_integration
-    put "/jogar/:slug", ProjectController, :update
-    delete "/jogar/:slug", ProjectController, :delete
+
+    # A tela do projeto é ao vivo: é nela que a barra sobe sozinha quando um
+    # commit chega. As rotas acima seguem sendo HTTP porque falam com o GitHub
+    # e terminam em redirecionamento.
+    live_session :autenticado,
+      on_mount: [{CommitCraftWeb.UserAuth, :require_authenticated}] do
+      live "/jogar/:slug", ProjectLive.Show
+    end
   end
 
   # Other scopes may use custom stacks.

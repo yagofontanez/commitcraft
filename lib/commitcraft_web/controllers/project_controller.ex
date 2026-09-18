@@ -29,55 +29,6 @@ defmodule CommitCraftWeb.ProjectController do
     end
   end
 
-  def show(conn, %{"slug" => slug}) do
-    case Projects.get_project(conn.assigns.current_user, slug) do
-      nil ->
-        # Projeto de outra pessoa e projeto inexistente respondem igual: dizer
-        # "existe, mas não é seu" já é contar algo sobre a conta alheia.
-        conn
-        |> put_flash(:error, "Não encontrei esse projeto.")
-        |> redirect(to: ~p"/jogar")
-
-      project ->
-        render_show(conn, project, Projects.change_project(project))
-    end
-  end
-
-  def update(conn, %{"slug" => slug, "project" => params}) do
-    case Projects.rename_project(conn.assigns.current_user, slug, params) do
-      {:ok, project} ->
-        conn
-        |> put_flash(:info, "Agora se chama \"#{project.name}\".")
-        |> redirect(to: ~p"/jogar/#{project.slug}")
-
-      {:error, :not_found} ->
-        conn
-        |> put_flash(:error, "Não encontrei esse projeto.")
-        |> redirect(to: ~p"/jogar")
-
-      {:error, changeset} ->
-        # Renderiza de novo em vez de redirecionar, para não jogar fora o que a
-        # pessoa digitou junto com o erro.
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render_show(Projects.get_project(conn.assigns.current_user, slug), changeset)
-    end
-  end
-
-  def delete(conn, %{"slug" => slug}) do
-    case Projects.delete_project(conn.assigns.current_user, slug) do
-      {:ok, project} ->
-        conn
-        |> put_flash(:info, "\"#{project.name}\" foi apagado.")
-        |> redirect(to: ~p"/jogar")
-
-      :error ->
-        conn
-        |> put_flash(:error, "Não encontrei esse projeto.")
-        |> redirect(to: ~p"/jogar")
-    end
-  end
-
   @doc """
   A tela de escolher qual repositório este projeto acompanha.
 
@@ -137,30 +88,6 @@ defmodule CommitCraftWeb.ProjectController do
     end
   end
 
-  def disconnect_repo(conn, %{"slug" => slug}) do
-    user = conn.assigns.current_user
-
-    with {:ok, project} <- buscar(user, slug) do
-      remover_webhook(user, project)
-
-      case Projects.disconnect_repo(user, slug) do
-        {:ok, project} ->
-          conn
-          |> put_flash(:info, "Repositório desconectado. O XP já conquistado fica.")
-          |> redirect(to: ~p"/jogar/#{project.slug}")
-
-        {:error, motivo} ->
-          desviar(conn, motivo, slug)
-      end
-    else
-      {:error, motivo} -> desviar(conn, motivo, slug)
-    end
-  end
-
-  # Conectar o repositório e instalar o webhook são coisas separadas de
-  # propósito: se o GitHub não conseguir alcançar este servidor — o caso normal
-  # em desenvolvimento, sem túnel —, o repositório continua ligado e a tela diz
-  # o que falta, em vez de desfazer tudo e não explicar nada.
   defp instalar_webhook(conn, user, project) do
     token = Projects.new_webhook_token()
     secret = Projects.new_webhook_secret()
@@ -203,20 +130,6 @@ defmodule CommitCraftWeb.ProjectController do
     end
   end
 
-  defp remover_webhook(user, project) do
-    hook = Projects.get_webhook(project, "github")
-
-    # Deixar hook órfão no repositório de alguém é sujeira nossa, não dela.
-    if hook && hook.external_id && project.repo_full_name do
-      case Api.delete_hook(user.github_token, project.repo_full_name, hook.external_id) do
-        :ok -> :ok
-        {:error, motivo} -> Logger.warning("não deu para remover o webhook: #{inspect(motivo)}")
-      end
-    end
-
-    Projects.delete_webhook(project, "github")
-  end
-
   defp explicar(:already_exists),
     do:
       "Já existe um webhook com este endereço no repositório — apague-o no GitHub e tente de novo."
@@ -242,60 +155,6 @@ defmodule CommitCraftWeb.ProjectController do
   defp ampliar(conn, slug) do
     redirect(conn, to: ~p"/auth/github/ampliar?voltar=#{~p"/jogar/#{slug}/repositorio"}")
   end
-
-  @doc """
-  Guarda o segredo de assinatura de Vercel ou Stripe.
-
-  Nestas duas o webhook é criado por quem opera, no painel do próprio serviço —
-  não por nós. Assim o CommitCraft não precisa de token de API nenhum dessas
-  contas: recebe a entrega e confere a assinatura, e nada além disso.
-  """
-  def save_integration(conn, %{"slug" => slug, "source" => source} = params) do
-    segredo = params |> Map.get("secret", "") |> to_string() |> String.trim()
-
-    with {:ok, project} <- buscar(conn.assigns.current_user, slug),
-         :ok <- fonte_colavel(source),
-         :ok <- segredo_preenchido(segredo) do
-      {:ok, _webhook} = Projects.put_webhook(project, source, %{secret: segredo})
-
-      conn
-      |> put_flash(:info, "#{nome_da_fonte(source)} conectado.")
-      |> redirect(to: ~p"/jogar/#{slug}")
-    else
-      {:error, :sem_segredo} ->
-        conn
-        |> put_flash(:error, "Cole o segredo de assinatura que o painel mostrou.")
-        |> redirect(to: ~p"/jogar/#{slug}")
-
-      {:error, motivo} ->
-        desviar(conn, motivo, slug)
-    end
-  end
-
-  def remove_integration(conn, %{"slug" => slug, "source" => source}) do
-    with {:ok, project} <- buscar(conn.assigns.current_user, slug),
-         :ok <- fonte_colavel(source) do
-      :ok = Projects.delete_webhook(project, source)
-
-      conn
-      |> put_flash(:info, "#{nome_da_fonte(source)} desconectado. O XP já conquistado fica.")
-      |> redirect(to: ~p"/jogar/#{slug}")
-    else
-      {:error, motivo} -> desviar(conn, motivo, slug)
-    end
-  end
-
-  # O webhook do GitHub é criado por nós, então não entra por aqui: deixar
-  # colar um segredo arbitrário nele quebraria o que já está instalado.
-  defp fonte_colavel(source) when source in ["vercel", "stripe"], do: :ok
-  defp fonte_colavel(_outra), do: {:error, :not_found}
-
-  defp segredo_preenchido(""), do: {:error, :sem_segredo}
-  defp segredo_preenchido(_segredo), do: :ok
-
-  defp nome_da_fonte("vercel"), do: "Vercel"
-  defp nome_da_fonte("stripe"), do: "Stripe"
-  defp nome_da_fonte(outra), do: outra
 
   defp buscar(user, slug) do
     case Projects.get_project(user, slug) do
@@ -352,29 +211,6 @@ defmodule CommitCraftWeb.ProjectController do
     conn
     |> put_flash(:error, "Não deu para falar com o GitHub agora. Tente de novo.")
     |> redirect(to: ~p"/jogar/#{slug}")
-  end
-
-  defp render_show(conn, project, changeset) do
-    conn
-    |> assign(:page_title, project.name)
-    |> assign(:project, project)
-    |> assign(:progress, Level.progress(project.xp))
-    |> assign(:changeset, changeset)
-    |> assign(:events, Projects.list_events(project))
-    |> assign(:listening?, Projects.listening?(project))
-    |> assign(:webhooks, endereços_prontos(project))
-    |> assign(:streak, Projects.current_streak(project))
-    |> assign(:achievements, Projects.list_achievements(project))
-    |> render(:show)
-  end
-
-  # Vercel e Stripe precisam do endereço na mão antes de existir segredo.
-  defp endereços_prontos(project) do
-    if project.repo_full_name do
-      for fonte <- ["vercel", "stripe"], do: Projects.ensure_webhook_token(project, fonte)
-    end
-
-    Projects.webhooks_by_source(project)
   end
 
   defp render_index(conn, changeset) do

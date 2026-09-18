@@ -66,6 +66,29 @@ defmodule CommitCraftWeb.UserAuth do
     end
   end
 
+  @doc """
+  Põe o usuário da sessão no socket de um LiveView.
+
+  O LiveView não passa pelos plugs do router depois do primeiro render, então a
+  checagem precisa acontecer aqui também — senão a conexão do websocket seria
+  uma porta sem porteiro.
+  """
+  def on_mount(:require_authenticated, _params, session, socket) do
+    socket = Phoenix.Component.assign_new(socket, :current_user, fn -> usuario(session) end)
+
+    if socket.assigns.current_user do
+      {:cont, socket}
+    else
+      {:halt,
+       socket
+       |> Phoenix.LiveView.put_flash(:error, "Entre com o GitHub para continuar.")
+       |> Phoenix.LiveView.redirect(to: ~p"/")}
+    end
+  end
+
+  defp usuario(%{"user_id" => id}), do: Accounts.get_user(id)
+  defp usuario(_sessao), do: nil
+
   @doc "Para onde vai quem acabou de entrar."
   def signed_in_path, do: ~p"/jogar"
 

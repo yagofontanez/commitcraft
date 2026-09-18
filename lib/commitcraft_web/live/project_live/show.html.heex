@@ -1,6 +1,20 @@
 <.flashes flash={@flash} />
 <.site_header current_user={@current_user} width="full" />
 
+<%!-- O nível subir é o momento que o jogo inteiro existe para produzir. Ele
+      aparece por cima de tudo e sai sozinho. --%>
+<div
+  :if={@level_up}
+  id="level-up"
+  phx-mounted={JS.transition({"level-up-entrada", "opacity-0", "opacity-100"}, time: 700)}
+  class="pointer-events-none fixed inset-x-0 top-24 z-40 flex justify-center px-4"
+>
+  <div class="frame-gold px-10 py-6 text-center">
+    <p class="font-pixel text-lg text-gold pixel-shadow">LEVEL UP</p>
+    <p class="mt-3 font-pixel text-sm text-bone">nível {padded(@level_up)}</p>
+  </div>
+</div>
+
 <main class="px-6 py-16 md:px-10 md:py-20">
   <.link navigate={~p"/jogar"} class="text-sm text-muted hover:text-bone">
     &larr; Seus projetos
@@ -10,9 +24,8 @@
         Silkscreen mastiga cedilha e til, e "Ração" fica ilegível. A fonte de
         pixel fica para o chrome do jogo, que é texto nosso e sem acento.
 
-        Renomear abre no próprio título, onde a pessoa está olhando — não numa
-        tela de configurações escondida. --%>
-  <details class="group mt-6" open={@changeset.errors != []}>
+        Renomear abre no próprio título, onde a pessoa está olhando. --%>
+  <details class="group mt-6" open={@form.errors != []}>
     <summary class="inline-flex cursor-pointer list-none flex-wrap items-baseline gap-x-4 gap-y-1 [&::-webkit-details-marker]:hidden">
       <h1 class="text-3xl font-semibold tracking-tight text-bone md:text-4xl">
         {@project.name}
@@ -21,23 +34,21 @@
     </summary>
 
     <.form
-      :let={f}
-      for={@changeset}
-      action={~p"/jogar/#{@project.slug}"}
-      method="put"
+      for={@form}
+      phx-submit="rename"
       class="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row"
     >
       <div class="min-w-0 flex-1">
         <input
           type="text"
-          name={f[:name].name}
-          value={Phoenix.HTML.Form.normalize_value("text", f[:name].value || @project.name)}
+          name={@form[:name].name}
+          value={Phoenix.HTML.Form.normalize_value("text", @form[:name].value || @project.name)}
           required
           maxlength="60"
           aria-label="Novo nome do projeto"
           class="w-full border-0 bg-ink px-4 py-3.5 text-bone focus:outline-none"
         />
-        <p :for={{mensagem, _} <- f[:name].errors} class="mt-2 text-xs text-ember">
+        <p :for={{mensagem, _} <- @form[:name].errors} class="mt-2 text-xs text-ember">
           O nome {mensagem}.
         </p>
       </div>
@@ -97,18 +108,16 @@
         >
           trocar
         </.link>
-        <.link
-          href={~p"/jogar/#{@project.slug}/repositorio"}
-          method="delete"
+        <button
+          type="button"
+          phx-click="disconnect_repo"
           class="text-sm text-muted hover:text-ember"
         >
           desconectar
-        </.link>
+        </button>
       </div>
     </div>
 
-    <%!-- Sem webhook o repositório está ligado mas mudo. A tela diz o que falta
-          e deixa tentar de novo, em vez de só mostrar que algo deu errado. --%>
     <div :if={!@listening?} class="mt-6 border-t-[3px] border-stone/50 pt-6">
       <p class="text-sm leading-relaxed text-muted">
         O repositório está ligado, mas o GitHub ainda não tem para onde entregar
@@ -136,7 +145,6 @@
         descricao="Cada deploy em produção vale XP; build quebrado custa."
         onde="Vercel → Settings → Webhooks → Create Webhook, marcando os eventos de deployment."
         webhook={@webhooks["vercel"]}
-        project={@project}
       />
 
       <.integration
@@ -146,7 +154,6 @@
         descricao="A primeira venda vale muito; as seguintes viram rotina."
         onde="Stripe → Developers → Webhooks → Add endpoint, com os eventos de pagamento."
         webhook={@webhooks["stripe"]}
-        project={@project}
       />
     </div>
   </div>
@@ -155,7 +162,12 @@
     <h2 class="font-pixel text-sm text-gold">Conquistas</h2>
 
     <ul class="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-      <li :for={conquista <- @achievements} class="frame px-6 py-6">
+      <li
+        :for={conquista <- @achievements}
+        id={"achievement-#{conquista.id}"}
+        phx-mounted={JS.transition({"medalha-entrada", "opacity-0", "opacity-100"}, time: 700)}
+        class="frame px-6 py-6"
+      >
         <% catalogo = CommitCraft.Game.Achievements.get(conquista.key) %>
         <.sprite name={:coin} class="h-9 w-9" recolor={rarity_paint(catalogo.rarity)} />
         <h3 class="mt-5 font-pixel text-[13px] leading-snug text-bone">{catalogo.name}</h3>
@@ -178,15 +190,19 @@
       <p class="font-pixel text-[13px] leading-relaxed text-muted">Nada aconteceu ainda</p>
       <p class="max-w-md text-sm leading-relaxed text-muted">
         {if @listening?,
-          do: "Faça um commit na branch principal e ele aparece aqui.",
+          do: "Faça um commit na branch principal e ele aparece aqui, sem recarregar a página.",
           else:
             "Conecte um repositório e cada commit, pull request e issue fechada passa a cair aqui."}
       </p>
     </div>
 
-    <ul :if={@events != []} class="mt-8 space-y-px">
+    <%!-- `phx-mounted` só dispara em elemento novo no DOM, então a animação
+          marca exatamente o que acabou de chegar — e nada mais. --%>
+    <ul :if={@events != []} id="linha-do-tempo" class="mt-8 space-y-px">
       <li
         :for={event <- @events}
+        id={"event-#{event.id}"}
+        phx-mounted={JS.transition({"evento-entrada", "opacity-0", "opacity-100"}, time: 900)}
         class="flex flex-wrap items-baseline gap-x-5 gap-y-1 bg-panel/60 px-6 py-4"
       >
         <span class={["shrink-0 font-pixel text-[11px]", event_tone(event.xp)]}>
@@ -201,9 +217,8 @@
     </ul>
   </div>
 
-  <%!-- Apagar fica atrás de um <details>: um clique abre, outro confirma. Sem
-        JS, sem diálogo nativo do navegador, e o texto diz em números o que está
-        sendo jogado fora — hoje é pouco, daqui a uns meses não vai ser. --%>
+  <%!-- Apagar fica atrás de um <details>: um clique abre, outro confirma. O
+        texto diz em números o que está sendo jogado fora. --%>
   <details class="group mt-16 max-w-xl">
     <summary class="inline-flex cursor-pointer list-none items-center gap-2 text-sm text-muted transition-colors hover:text-ember [&::-webkit-details-marker]:hidden">
       <span class="font-pixel text-[10px] text-muted group-open:text-ember">&#9660;</span>
@@ -218,13 +233,9 @@
         Não dá para desfazer.
       </p>
 
-      <.link
-        href={~p"/jogar/#{@project.slug}"}
-        method="delete"
-        class="btn-ghost-craft mt-6 !text-ember"
-      >
+      <button type="button" phx-click="delete" class="btn-ghost-craft mt-6 !text-ember">
         Apagar mesmo
-      </.link>
+      </button>
     </div>
   </details>
 </main>

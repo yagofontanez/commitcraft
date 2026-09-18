@@ -18,8 +18,9 @@ defmodule CommitCraft.ProjectsFixtures do
     if xp == 0 do
       project
     else
-      # Ainda não existe caminho pelo domínio para dar XP — isso chega com os
-      # eventos do GitHub. Até lá, o teste escreve direto.
+      # XP escrito direto, para montar um estado inicial. Cuidado: o primeiro
+      # `record_events/2` recalcula o total como a soma dos eventos, então este
+      # valor some. Para um estado que sobreviva a novos eventos, grave eventos.
       project |> Ecto.Changeset.change(xp: xp) |> Repo.update!()
     end
   end

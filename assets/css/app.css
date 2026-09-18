@@ -207,6 +207,16 @@ svg { shape-rendering: crispEdges; }
   box-shadow: inset 0 4px rgba(255, 255, 255, 0.35), inset 0 -5px var(--color-gold-deep);
 }
 
+/* A barra sobe em degraus, não deslizando: num jogo de 16 bits o XP entra em
+   blocos. `steps()` faz o crescimento parecer contagem, não animação. */
+.xp-fill {
+  transition: width 900ms steps(24, end);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-fill { transition: none; }
+}
+
 /* Entalhes verticais que fatiam a barra — leitura de "unidades", não de porcentagem. */
 .xp-notches {
   position: absolute;
@@ -309,6 +319,48 @@ svg { shape-rendering: crispEdges; }
   content: "▌";
   color: var(--color-gold);
   animation: blink 0.9s steps(1, end) infinite;
+}
+
+/* ───────────────────  chegada ao vivo pelo LiveView  ─────────────────
+   Estas animações rodam uma vez, em elemento que acabou de entrar no DOM —
+   é o que marca o que é novidade sem piscar o resto da tela. */
+
+.evento-entrada {
+  animation: evento-entrada 900ms steps(6, end);
+}
+
+@keyframes evento-entrada {
+  0%   { background-color: var(--color-gold); color: var(--color-ink); transform: translateX(-8px); }
+  40%  { background-color: var(--color-gold-deep); }
+  100% { background-color: transparent; transform: translateX(0); }
+}
+
+.medalha-entrada {
+  animation: medalha-entrada 700ms steps(5, end);
+}
+
+@keyframes medalha-entrada {
+  0%   { transform: scale(0.85); }
+  60%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.level-up-entrada {
+  animation: level-up-entrada 700ms steps(6, end);
+}
+
+@keyframes level-up-entrada {
+  0%   { transform: translateY(-16px) scale(0.9); }
+  50%  { transform: translateY(4px) scale(1.06); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evento-entrada,
+  .medalha-entrada,
+  .level-up-entrada {
+    animation: none;
+  }
 }
 
 /* ──────────────────────────  detalhes de texto  ────────────────────── */

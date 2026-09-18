@@ -62,6 +62,23 @@ defmodule CommitCraftWeb.Game do
   def rarity_text("Incomum"), do: "text-moss"
   def rarity_text(_), do: "text-muted"
 
+  @doc "A cor de um acontecimento, pelo sinal do XP que ele vale."
+  def event_tone(xp) when xp < 0, do: "text-ember"
+  def event_tone(xp) when xp >= 100, do: "text-gold"
+  def event_tone(_xp), do: "text-moss"
+
+  @doc """
+  O nome de um tipo de acontecimento em português.
+
+  Fica aqui, e não no banco, porque é rótulo de tela: mudar o texto não deveria
+  exigir migração.
+  """
+  def event_label("commit"), do: "commit"
+  def event_label("pull_request_merged"), do: "pull request mesclado"
+  def event_label("issue_closed"), do: "issue fechada"
+  def event_label("deploy"), do: "deploy"
+  def event_label(outro), do: outro
+
   @doc """
   O cartão de uma integração que se conecta colando um segredo.
 
@@ -75,7 +92,6 @@ defmodule CommitCraftWeb.Game do
   attr :descricao, :string, required: true
   attr :onde, :string, required: true
   attr :webhook, :any, default: nil
-  attr :project, :map, required: true
 
   def integration(assigns) do
     assigns = assign(assigns, :conectado, CommitCraft.Projects.connected?(assigns.webhook))
@@ -91,9 +107,7 @@ defmodule CommitCraftWeb.Game do
           <div class="flex flex-wrap items-baseline gap-x-3">
             <h3 class="font-semibold text-bone">{@nome}</h3>
             <span :if={@conectado} class="font-pixel text-[10px] text-moss">escutando</span>
-            <span :if={!@conectado} class="font-pixel text-[10px] text-muted">
-              não conectado
-            </span>
+            <span :if={!@conectado} class="font-pixel text-[10px] text-muted">não conectado</span>
           </div>
           <p class="mt-2 text-sm leading-relaxed text-muted">{@descricao}</p>
         </div>
@@ -103,46 +117,42 @@ defmodule CommitCraftWeb.Game do
         <p class="text-xs text-muted">
           conectado {Calendar.strftime(@webhook.installed_at, "%d/%m/%Y")}
         </p>
-        <.link
-          href={"/jogar/#{@project.slug}/integracao/#{@source}"}
-          method="delete"
+        <button
+          type="button"
+          phx-click="remove_integration"
+          phx-value-source={@source}
           class="text-sm text-muted hover:text-ember"
         >
           desconectar
-        </.link>
+        </button>
       </div>
 
-      <div :if={!@conectado} class="mt-6">
+      <form :if={!@conectado} id={"integracao-#{@source}"} phx-submit="save_integration" class="mt-6">
         <p class="text-xs leading-relaxed text-muted">{@onde}</p>
 
-        <.form
-          for={%{}}
-          action={"/jogar/#{@project.slug}/integracao/#{@source}"}
-          method="put"
-          class="mt-4"
-        >
-          <label class="block text-xs text-muted" for={"segredo-#{@source}"}>
-            Endereço para colar lá
-          </label>
-          <code class="mt-2 block truncate bg-ink px-4 py-3 text-xs text-bone">
-            {webhook_url(@webhook, @source)}
-          </code>
+        <input type="hidden" name="source" value={@source} />
 
-          <input
-            id={"segredo-#{@source}"}
-            type="text"
-            name="secret"
-            required
-            placeholder="Segredo de assinatura"
-            aria-label={"Segredo de assinatura do #{@nome}"}
-            class="mt-3 w-full border-0 bg-ink px-4 py-3 text-bone placeholder:text-muted/60 focus:outline-none"
-          />
+        <label class="mt-4 block text-xs text-muted" for={"segredo-#{@source}"}>
+          Endereço para colar lá
+        </label>
+        <code class="mt-2 block truncate bg-ink px-4 py-3 text-xs text-bone">
+          {webhook_url(@webhook, @source)}
+        </code>
 
-          <button type="submit" class="btn-ghost-craft mt-4 w-full justify-center">
-            Conectar {@nome}
-          </button>
-        </.form>
-      </div>
+        <input
+          id={"segredo-#{@source}"}
+          type="text"
+          name="secret"
+          required
+          placeholder="Segredo de assinatura"
+          aria-label={"Segredo de assinatura do #{@nome}"}
+          class="mt-3 w-full border-0 bg-ink px-4 py-3 text-bone placeholder:text-muted/60 focus:outline-none"
+        />
+
+        <button type="submit" class="btn-ghost-craft mt-4 w-full justify-center">
+          Conectar {@nome}
+        </button>
+      </form>
     </div>
     """
   end
