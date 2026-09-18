@@ -254,6 +254,13 @@ defmodule CommitCraft.Projects do
     |> Streak.current()
   end
 
+  @doc "O estado da sequência: quantos dias, e se ela morre hoje."
+  def streak_status(%Project{} = project) do
+    project
+    |> momentos_de_commit()
+    |> Streak.status()
+  end
+
   @doc "As conquistas que um projeto já tem, da mais recente para a mais antiga."
   def list_achievements(%Project{} = project) do
     Achievement

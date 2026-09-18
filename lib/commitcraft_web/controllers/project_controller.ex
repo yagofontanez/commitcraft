@@ -220,7 +220,9 @@ defmodule CommitCraftWeb.ProjectController do
     projetos =
       conn.assigns.current_user
       |> Projects.list_projects()
-      |> Enum.map(&%{project: &1, progress: Level.progress(&1.xp)})
+      |> Enum.map(
+        &%{project: &1, progress: Level.progress(&1.xp), streak: Projects.streak_status(&1)}
+      )
 
     conn
     |> assign(:page_title, "Seus projetos")

@@ -9,6 +9,7 @@ defmodule CommitCraftWeb.ProjectLive.Show do
   use CommitCraftWeb, :live_view
 
   alias CommitCraft.Game.Class
+  alias CommitCraft.Game.Heatmap
   alias CommitCraft.Game.Level
   alias CommitCraft.GitHub.Api
   alias CommitCraft.Projects
@@ -190,6 +191,9 @@ defmodule CommitCraftWeb.ProjectLive.Show do
   end
 
   defp carregar(socket, project) do
+    # O mapa de calor olha o ano inteiro, não só o que a lista mostra.
+    todos = Projects.list_events(project, limit: 2000)
+
     if project.repo_full_name do
       for fonte <- ["vercel", "stripe"], do: Projects.ensure_webhook_token(project, fonte)
     end
@@ -204,10 +208,11 @@ defmodule CommitCraftWeb.ProjectLive.Show do
     |> assign(:achievements, Projects.list_achievements(project))
     |> assign(:webhooks, Projects.webhooks_by_source(project))
     |> assign(:listening?, Projects.listening?(project))
-    |> assign(:streak, Projects.current_streak(project))
+    |> assign(:streak_status, Projects.streak_status(project))
     # A classe olha o histórico inteiro, não só os últimos que a tela mostra:
     # um projeto não deixa de ser Maratonista porque a lista foi cortada em 30.
-    |> assign(:class, project |> Projects.list_events(limit: 500) |> Class.for_events())
+    |> assign(:class, Class.for_events(todos))
+    |> assign(:heatmap, Heatmap.build(todos))
     |> assign(:reveal_titles, Projects.reveal_titles?(project))
   end
 

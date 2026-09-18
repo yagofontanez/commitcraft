@@ -63,12 +63,27 @@
     <span class="text-muted">{@class.how}</span>
   </p>
 
+  <%!-- O aviso vem antes do painel porque é a única coisa nesta tela que tem
+        prazo. --%>
+  <div
+    :if={@streak_status.at_risk}
+    class="frame-gold mt-8 flex max-w-xl flex-wrap items-center gap-x-4 gap-y-2 px-6 py-4"
+  >
+    <span class="font-pixel text-[11px] text-gold">&#9888; SEQUÊNCIA EM RISCO</span>
+    <span class="text-sm text-bone">
+      Seus {@streak_status.days} dias morrem à meia-noite. {if @streak_status.hours_left == 1,
+        do: "Falta uma hora.",
+        else: "Faltam #{@streak_status.hours_left} horas."}
+    </span>
+  </div>
+
   <div class="mt-10 max-w-md">
     <.hud progress={@progress}>
       <:caption>
         projeto <span class="text-bone">{@project.slug}</span>
-        <span :if={@streak > 0} class="text-moss">
-          · {@streak} {if @streak == 1, do: "dia", else: "dias"} de sequência
+        <span :if={@streak_status.days > 0} class="text-moss">
+          · {@streak_status.days}
+          {if @streak_status.days == 1, do: "dia", else: "dias"} de sequência
         </span>
       </:caption>
     </.hud>
@@ -187,6 +202,16 @@
         </p>
       </li>
     </ul>
+  </div>
+
+  <div :if={@events != []} class="mt-16">
+    <h2 class="font-pixel text-sm text-gold">O ano</h2>
+
+    <p class="mt-4 max-w-2xl text-sm leading-relaxed text-muted">
+      Cada quadradinho é um dia. Quanto mais claro, mais aconteceu.
+    </p>
+
+    <.heatmap weeks={@heatmap} class="mt-8" />
   </div>
 
   <div class="mt-16">

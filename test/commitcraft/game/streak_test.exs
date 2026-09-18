@@ -69,6 +69,63 @@ defmodule CommitCraft.Game.StreakTest do
     end
   end
 
+  describe "status/2" do
+    defp commits_ate(ultimo_dia, quantidade) do
+      for d <- 0..(quantidade - 1), do: em(Date.add(ultimo_dia, -d), 15)
+    end
+
+    test "avisa quando a sequência morre hoje e o dia está acabando" do
+      # Último commit foi ontem; agora são 21h locais (meia-noite UTC).
+      momentos = commits_ate(~D[2026-09-17], 5)
+
+      estado = Streak.status(momentos, ~U[2026-09-19 00:00:00Z])
+
+      assert estado.days == 5
+      assert estado.at_risk
+      assert estado.hours_left == 3
+    end
+
+    test "não cobra de manhã: o dia inteiro ainda está pela frente" do
+      momentos = commits_ate(~D[2026-09-17], 5)
+
+      # 9h locais.
+      estado = Streak.status(momentos, ~U[2026-09-18 12:00:00Z])
+
+      refute estado.at_risk
+      assert estado.days == 5
+    end
+
+    test "quem já commitou hoje não está em risco" do
+      momentos = commits_ate(~D[2026-09-18], 5)
+
+      estado = Streak.status(momentos, ~U[2026-09-19 00:00:00Z])
+
+      assert estado.committed_today
+      refute estado.at_risk
+    end
+
+    test "sequência de um dia não vira aviso" do
+      # O aviso perde força se aparecer o tempo todo.
+      momentos = [em(~D[2026-09-17], 15)]
+
+      refute Streak.status(momentos, ~U[2026-09-19 00:00:00Z]).at_risk
+    end
+
+    test "sequência já morta não avisa nada" do
+      momentos = commits_ate(~D[2026-09-10], 5)
+
+      estado = Streak.status(momentos, ~U[2026-09-19 00:00:00Z])
+
+      assert estado.days == 0
+      refute estado.at_risk
+    end
+
+    test "as horas restantes são as do fuso do jogo" do
+      # 20h UTC é 17h local: faltam sete horas para a meia-noite de quem joga.
+      assert Streak.status([], ~U[2026-09-18 20:00:00Z]).hours_left == 7
+    end
+  end
+
   describe "longest/1" do
     test "acha a maior sequência mesmo depois de ela morrer" do
       momentos =

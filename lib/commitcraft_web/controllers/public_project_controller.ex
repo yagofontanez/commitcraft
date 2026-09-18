@@ -9,6 +9,7 @@ defmodule CommitCraftWeb.PublicProjectController do
   use CommitCraftWeb, :controller
 
   alias CommitCraft.Game.Class
+  alias CommitCraft.Game.Heatmap
   alias CommitCraft.Game.Level
   alias CommitCraft.Projects
 
@@ -22,12 +23,14 @@ defmodule CommitCraftWeb.PublicProjectController do
 
       project ->
         eventos = Projects.list_events(project, limit: 60)
+        todos = Projects.list_events(project, limit: 2000)
 
         conn
         |> assign(:page_title, "#{project.name} · #{project.user.github_login}")
         |> assign(:project, project)
         |> assign(:progress, Level.progress(project.xp))
-        |> assign(:class, project |> Projects.list_events(limit: 500) |> Class.for_events())
+        |> assign(:class, Class.for_events(todos))
+        |> assign(:heatmap, Heatmap.build(todos))
         |> assign(:events, eventos)
         |> assign(:achievements, Projects.list_achievements(project))
         |> assign(:streak, Projects.current_streak(project))
@@ -36,7 +39,7 @@ defmodule CommitCraftWeb.PublicProjectController do
           :share_description,
           CommitCraftWeb.PublicProjectHTML.compartilhamento(
             Level.progress(project.xp),
-            project |> Projects.list_events(limit: 500) |> Class.for_events()
+            Class.for_events(todos)
           )
         )
         |> render(:show)

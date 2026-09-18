@@ -216,6 +216,14 @@ defmodule CommitCraftWeb.Pixel do
   def sprite_rows(name), do: Map.fetch!(@sprites, name)
 
   @doc """
+  Os pixels acesos de um sprite, como `{x, y, cor}`.
+
+  Existe para quem desenha fora do navegador — a imagem de compartilhamento usa
+  os mesmos sprites da tela, e não faria sentido redesenhá-los.
+  """
+  def cells_of(name), do: cells(Map.fetch!(@sprites, name), @palette)
+
+  @doc """
   Desenha um sprite nomeado.
 
   A cor pode ser trocada por caractere com `recolor`, para reaproveitar a mesma

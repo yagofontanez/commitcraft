@@ -52,7 +52,17 @@
 
   <div class="hairline my-12"></div>
 
-  <div>
+  <div :if={@events != []}>
+    <h2 class="font-pixel text-sm text-gold">O ano</h2>
+
+    <p class="mt-4 max-w-2xl text-sm leading-relaxed text-muted">
+      Cada quadradinho é um dia. Quanto mais claro, mais aconteceu.
+    </p>
+
+    <.heatmap weeks={@heatmap} class="mt-8" />
+  </div>
+
+  <div class="mt-16">
     <h2 class="font-pixel text-sm text-gold">O caminho</h2>
 
     <p class="mt-4 max-w-2xl text-sm leading-relaxed text-muted">

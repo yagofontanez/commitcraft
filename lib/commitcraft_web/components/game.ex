@@ -168,6 +168,45 @@ defmodule CommitCraftWeb.Game do
   defp bloco_cor(_outro), do: "bg-panel text-muted"
 
   @doc """
+  O ano em quadradinhos.
+
+  Cada coluna é uma semana, cada linha um dia da semana — a mesma leitura do
+  GitHub, porque inventar uma convenção nova para uma informação que já tem uma
+  só faria a pessoa parar para entender.
+  """
+  attr :weeks, :list, required: true
+  attr :class, :string, default: nil
+
+  def heatmap(assigns) do
+    ~H"""
+    <div class={["overflow-x-auto", @class]}>
+      <div class="flex gap-[3px]" role="img" aria-label="Atividade dos últimos meses">
+        <div :for={semana <- @weeks} class="flex flex-col gap-[3px]">
+          <div
+            :for={dia <- semana}
+            title={
+              if dia.future,
+                do: nil,
+                else: "#{Calendar.strftime(dia.date, "%d/%m/%Y")} · #{numero(dia.xp)} XP"
+            }
+            class={["h-3 w-3 shrink-0", dia.future && "opacity-0", cor_do_dia(dia.level)]}
+          >
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  # Cinco faixas, do chão apagado ao ouro. A menor delas já é visivelmente
+  # diferente de "nada": é a distinção que mais importa num mapa de constância.
+  defp cor_do_dia(0), do: "bg-panel"
+  defp cor_do_dia(1), do: "bg-[#3d3160]"
+  defp cor_do_dia(2), do: "bg-[#5a4a8f]"
+  defp cor_do_dia(3), do: "bg-[#c8871f]"
+  defp cor_do_dia(4), do: "bg-gold"
+
+  @doc """
   O painel de nível e XP.
 
   Recebe o mapa de `CommitCraft.Game.Level.progress/1` inteiro em vez de nível e

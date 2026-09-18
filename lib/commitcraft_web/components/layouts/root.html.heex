@@ -28,7 +28,15 @@
       }
     />
     <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary" />
+
+    <%!-- Com imagem o card vira grande; sem, o resumo de texto ainda funciona. --%>
+    <meta :if={assigns[:share_image]} property="og:image" content={@share_image} />
+    <meta :if={assigns[:share_image]} property="og:image:width" content="1200" />
+    <meta :if={assigns[:share_image]} property="og:image:height" content="630" />
+    <meta
+      name="twitter:card"
+      content={if assigns[:share_image], do: "summary_large_image", else: "summary"}
+    />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

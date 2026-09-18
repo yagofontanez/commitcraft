@@ -59,6 +59,46 @@ defmodule CommitCraft.Game.Streak do
     |> elem(0)
   end
 
+  @doc """
+  O estado da sequência: quantos dias, e se ela morre hoje.
+
+  "Em risco" não é só "não commitou ainda" — é "não commitou ainda **e** o dia
+  está acabando". Avisar às oito da manhã que a sequência pode morrer seria
+  cobrança, não ajuda; o dia inteiro ainda está pela frente.
+
+  Sequência de um dia também não entra: ninguém perde o sono por ela, e o aviso
+  perde força se aparecer o tempo todo.
+
+      iex> alias CommitCraft.Game.Streak
+      iex> Streak.status([], ~U[2026-09-18 23:00:00Z])
+      %{days: 0, committed_today: false, at_risk: false, hours_left: 4}
+  """
+  @hora_do_aviso 18
+
+  def status(momentos, agora \\ nil) do
+    agora = agora || DateTime.utc_now()
+    hoje = to_date(agora)
+    hora = hora_local(agora)
+
+    dias = momentos |> Enum.map(&to_date/1) |> MapSet.new()
+    commitou_hoje? = MapSet.member?(dias, hoje)
+    atual = current(momentos, hoje)
+
+    %{
+      days: atual,
+      committed_today: commitou_hoje?,
+      at_risk: atual >= 2 and not commitou_hoje? and hora >= @hora_do_aviso,
+      hours_left: 24 - hora
+    }
+  end
+
+  @doc "A hora que é agora, no fuso do jogo."
+  def hora_local(%DateTime{} = momento) do
+    momento
+    |> DateTime.add(offset_horas() * 3600, :second)
+    |> Map.fetch!(:hour)
+  end
+
   @doc "O dia de hoje no fuso do jogo."
   def today, do: DateTime.utc_now() |> to_date()
 

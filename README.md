@@ -200,6 +200,28 @@ O nome do repositório segue a mesma regra. Um teste conecta um repo privado,
 publica o projeto e verifica que nem a mensagem nem o nome do repositório
 aparecem.
 
+### A imagem de compartilhamento
+
+`/p/:login/:slug/card.png` devolve um PNG de 1200x630 — **gerado sem nenhuma
+dependência**. Renderizar imagem em Elixir normalmente significa arrastar
+libvips ou um navegador sem cabeça, e isso vira uma dependência de sistema que
+precisa existir no servidor também.
+
+Mas o CommitCraft desenha pixel art, e um PNG sem perdas é literalmente uma
+grade de cores seguida de zlib — que a OTP já traz. Então há três peças
+pequenas: `CommitCraftWeb.Png` (o codificador, trinta linhas),
+`CommitCraftWeb.PixelFont` (uma fonte 5x7 desenhada como grade de texto, igual
+aos sprites) e `CommitCraftWeb.Card` (o desenho).
+
+A arte é feita numa grade de 200x105 e ampliada seis vezes na codificação. É o
+que mantém o traço quadrado, é como qualquer jogo de 16 bits chega numa tela
+moderna, e deixa o código de desenho trabalhar em números pequenos.
+
+Duas perdas assumidas: **acento é transliterado** ("Ração" vira "RACAO"),
+porque desenhar à mão cada letra acentuada para um card que se olha por dois
+segundos não se paga; e o corte de nome longo é por **largura em pixels**, não
+por contagem de caracteres — o que importa é o que cabe na moldura.
+
 ### O selo do README
 
 `/p/:login/:slug/badge.svg` devolve um SVG montado como string — sem biblioteca,

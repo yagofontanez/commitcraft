@@ -37,6 +37,7 @@ defmodule CommitCraftWeb.Router do
     # A vitrine é a única tela que qualquer um abre.
     get "/p/:login/:slug", PublicProjectController, :show
     get "/p/:login/:slug/badge.svg", BadgeController, :show
+    get "/p/:login/:slug/card.png", BadgeController, :card
 
     get "/auth/github", AuthController, :request
     get "/auth/github/callback", AuthController, :callback
