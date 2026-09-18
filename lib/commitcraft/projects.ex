@@ -357,6 +357,41 @@ defmodule CommitCraft.Projects do
     end
   end
 
+  @doc """
+  Abre ou fecha a página pública de um projeto.
+  """
+  def set_visibility(%User{} = user, slug, publico?) when is_boolean(publico?) do
+    case get_project(user, slug) do
+      nil -> {:error, :not_found}
+      project -> project |> Ecto.Changeset.change(public: publico?) |> Repo.update()
+    end
+  end
+
+  @doc """
+  Um projeto público, pelo login de quem o construiu e pelo apelido.
+
+  Só devolve o que está marcado como público: a mesma função serve a quem não
+  entrou, então ela não pode ter um caminho que devolva projeto fechado.
+  """
+  def get_public_project(login, slug) when is_binary(login) and is_binary(slug) do
+    from(p in Project,
+      join: u in User,
+      on: u.id == p.user_id,
+      where: p.public and p.slug == ^slug and u.github_login == ^login,
+      preload: [user: u]
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Se dá para mostrar o texto dos acontecimentos numa página pública.
+
+  Mensagem de commit de repositório privado é conteúdo privado. Tornar o projeto
+  público não pode arrastar junto uma coisa que a pessoa nunca pensou em
+  publicar — o mapa continua lá, só sem as palavras.
+  """
+  def reveal_titles?(%Project{} = project), do: project.repo_private == false
+
   @doc "Um changeset vazio, para o formulário."
   def change_project(%Project{} = project \\ %Project{}, attrs \\ %{}) do
     Project.changeset(project, attrs)

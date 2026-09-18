@@ -61,6 +61,7 @@ defmodule CommitCraftWeb.Game do
   attr :events, :list, required: true
   attr :listening, :boolean, default: false
   attr :recem_chegados, :any, default: nil
+  attr :reveal_titles, :boolean, default: true
 
   def journey(assigns) do
     # O mais antigo primeiro: o caminho se lê da esquerda para a direita, como
@@ -96,7 +97,11 @@ defmodule CommitCraftWeb.Game do
                 novidade?(@recem_chegados, :event, event.id) &&
                   JS.transition({"bloco-entrada", "opacity-0", "opacity-100"}, time: 700)
               }
-              title={"#{event.title} · #{Calendar.strftime(event.occurred_at, "%d/%m/%Y %H:%M")}"}
+              title={
+                if @reveal_titles,
+                  do: "#{event.title} · #{Calendar.strftime(event.occurred_at, "%d/%m/%Y %H:%M")}",
+                  else: Calendar.strftime(event.occurred_at, "%d/%m/%Y %H:%M")
+              }
               class={[
                 "shrink-0 border-r-[3px] border-b-[3px] border-ink px-4 py-3",
                 "w-[150px] md:w-[172px]",
@@ -110,7 +115,14 @@ defmodule CommitCraftWeb.Game do
                   {if event.xp > 0, do: "+#{event.xp}", else: event.xp}
                 </span>
               </div>
-              <p class="mt-2 line-clamp-2 text-xs leading-snug text-bone/75">{event.title}</p>
+              <%!-- Sem os títulos, o bloco ainda conta o que aconteceu e
+                    quanto valeu — só não conta o que foi escrito. --%>
+              <p
+                :if={@reveal_titles}
+                class="mt-2 line-clamp-2 text-xs leading-snug text-bone/75"
+              >
+                {event.title}
+              </p>
             </div>
 
             <%!-- Sem nada gravado, o chão ainda existe: o caminho começa vazio,

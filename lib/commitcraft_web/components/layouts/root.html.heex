@@ -14,12 +14,21 @@
       {assigns[:page_title]}
     </.live_title>
 
-    <meta property="og:title" content="CommitCraft — seu projeto, jogável" />
+    <%!-- Quando a página tem assunto próprio, o card do link fala dele; senão,
+          fala do CommitCraft. --%>
+    <meta
+      property="og:title"
+      content={assigns[:page_title] || "CommitCraft — seu projeto, jogável"}
+    />
     <meta
       property="og:description"
-      content="Commits viram XP. Deploys viram conquistas. Seu projeto ganha nível enquanto você constrói."
+      content={
+        assigns[:share_description] ||
+          "Commits viram XP. Deploys viram conquistas. Seu projeto ganha nível enquanto você constrói."
+      }
     />
     <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

@@ -1,0 +1,98 @@
+<.site_header current_user={@current_user} width="full" />
+
+<main class="px-6 py-16 md:px-10 md:py-20">
+  <div class="flex flex-wrap items-center gap-4">
+    <img
+      :if={@project.user.avatar_url}
+      src={@project.user.avatar_url}
+      alt=""
+      width="36"
+      height="36"
+      class="h-9 w-9 shrink-0 border-2 border-stone"
+    />
+    <p class="text-sm text-muted">
+      construído por
+      <a
+        href={"https://github.com/#{@project.user.github_login}"}
+        rel="noopener"
+        class="text-bone hover:text-gold"
+      >
+        @{@project.user.github_login}
+      </a>
+    </p>
+  </div>
+
+  <h1 class="mt-6 text-3xl font-semibold tracking-tight text-bone md:text-4xl">
+    {@project.name}
+  </h1>
+
+  <p :if={@class} class="mt-6 flex flex-wrap items-baseline gap-x-3 text-sm">
+    <span class="font-pixel text-[11px] text-violet">{@class.name}</span>
+    <span class="text-muted">{@class.how}</span>
+  </p>
+
+  <div class="mt-10 max-w-md">
+    <.hud progress={@progress}>
+      <:caption>
+        <%!-- Repositório privado não aparece nem pelo nome. --%>
+        <a
+          :if={@project.repo_full_name && @reveal_titles}
+          href={"https://github.com/#{@project.repo_full_name}"}
+          rel="noopener"
+          class="text-bone hover:text-gold"
+        >
+          {@project.repo_full_name}
+        </a>
+        <span :if={@streak > 0} class="text-moss">
+          · {@streak} {if @streak == 1, do: "dia", else: "dias"} de sequência
+        </span>
+      </:caption>
+    </.hud>
+  </div>
+
+  <div class="hairline my-12"></div>
+
+  <div>
+    <h2 class="font-pixel text-sm text-gold">O caminho</h2>
+
+    <p class="mt-4 max-w-2xl text-sm leading-relaxed text-muted">
+      Cada bloco é uma coisa que aconteceu no repositório.
+      <span :if={!@reveal_titles}>
+        O texto de cada um fica de fora porque o repositório é privado.
+      </span>
+    </p>
+
+    <div class="mt-8">
+      <.journey events={@events} reveal_titles={@reveal_titles} />
+    </div>
+  </div>
+
+  <div :if={@achievements != []} class="mt-16">
+    <h2 class="font-pixel text-sm text-gold">Conquistas</h2>
+
+    <ul class="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <li :for={conquista <- @achievements} class="frame px-6 py-6">
+        <% catalogo = CommitCraft.Game.Achievements.get(conquista.key) %>
+        <.sprite name={:coin} class="h-9 w-9" recolor={rarity_paint(catalogo.rarity)} />
+        <h3 class="mt-5 font-pixel text-[13px] leading-snug text-bone">{catalogo.name}</h3>
+        <p class="mt-3 text-sm leading-relaxed text-muted">{catalogo.how}</p>
+        <p class={["mt-4 font-pixel text-[10px]", rarity_text(catalogo.rarity)]}>
+          {catalogo.rarity}
+        </p>
+      </li>
+    </ul>
+  </div>
+
+  <%!-- Quem chegou aqui por um link não sabe o que é o CommitCraft. Esta é a
+        única chance de contar. --%>
+  <div class="frame mt-20 flex flex-col items-center gap-6 px-8 py-14 text-center">
+    <.sprite name={:coin} class="h-12 w-12 coin-spin" />
+    <p class="max-w-md text-base leading-relaxed text-bone">
+      O CommitCraft transforma o seu repositório num jogo. Commits viram XP,
+      deploys viram conquistas, e o projeto ganha nível enquanto você constrói.
+    </p>
+    <.link navigate={~p"/"} class="btn-craft">Ver como funciona</.link>
+  </div>
+</main>
+
+<.site_footer width="full" />

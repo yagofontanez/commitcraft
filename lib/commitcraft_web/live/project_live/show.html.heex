@@ -227,6 +227,67 @@
     </details>
   </div>
 
+  <%!-- Publicar é um ato deliberado, então a tela diz exatamente o que passa a
+        ser visível — inclusive o que NÃO passa. --%>
+  <div class="mt-16 max-w-2xl">
+    <h2 class="font-pixel text-sm text-gold">Página pública</h2>
+
+    <div class="frame mt-6 px-6 py-6">
+      <p :if={!@project.public} class="text-sm leading-relaxed text-muted">
+        Este projeto é privado. Abrindo a página pública, qualquer pessoa com o
+        link vê o nome, o nível, a classe, as conquistas e o caminho.
+        <span :if={!@reveal_titles} class="text-bone">
+          O texto dos commits fica de fora, porque o repositório é privado.
+        </span>
+        <span :if={@reveal_titles} class="text-bone">
+          As mensagens de commit aparecem — o repositório é público, então elas
+          já são.
+        </span>
+      </p>
+
+      <div :if={@project.public}>
+        <p class="text-sm leading-relaxed text-muted">
+          Está no ar. Qualquer pessoa com este link vê o projeto:
+        </p>
+
+        <code class="mt-4 block truncate bg-ink px-4 py-3 text-xs text-bone">
+          {url(~p"/p/#{@current_user.github_login}/#{@project.slug}")}
+        </code>
+
+        <%!-- O selo é o que leva o CommitCraft para onde outras pessoas já
+              estão olhando: o README de quem usa. --%>
+        <p class="mt-6 text-sm leading-relaxed text-muted">
+          E este é o selo para colar no README do repositório:
+        </p>
+
+        <code class="mt-3 block overflow-x-auto bg-ink px-4 py-3 text-xs whitespace-pre text-bone">{markdown_do_selo(
+          @current_user.github_login,
+          @project.slug
+        )}</code>
+
+        <img
+          src={~p"/p/#{@current_user.github_login}/#{@project.slug}/badge.svg"}
+          alt="Prévia do selo"
+          class="mt-4 h-5"
+        />
+      </div>
+
+      <div class="mt-6 flex flex-wrap items-center gap-5">
+        <button type="button" phx-click="toggle_public" class="btn-ghost-craft">
+          {if @project.public, do: "Fechar a página", else: "Tornar público"}
+        </button>
+
+        <.link
+          :if={@project.public}
+          navigate={~p"/p/#{@current_user.github_login}/#{@project.slug}"}
+          class="text-sm text-muted hover:text-bone"
+        >
+          ver como fica
+        </.link>
+      </div>
+    </div>
+  </div>
+
   <%!-- Apagar fica atrás de um <details>: um clique abre, outro confirma. O
         texto diz em números o que está sendo jogado fora. --%>
   <details class="group mt-16 max-w-xl">

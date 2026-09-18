@@ -34,6 +34,10 @@ defmodule CommitCraftWeb.Router do
 
     get "/", PageController, :home
 
+    # A vitrine é a única tela que qualquer um abre.
+    get "/p/:login/:slug", PublicProjectController, :show
+    get "/p/:login/:slug/badge.svg", BadgeController, :show
+
     get "/auth/github", AuthController, :request
     get "/auth/github/callback", AuthController, :callback
     delete "/auth/sair", AuthController, :delete

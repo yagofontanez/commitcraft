@@ -63,7 +63,7 @@ defmodule CommitCraftWeb.Site do
 
           <a :if={@current_user} href={~p"/jogar"} class="flex items-center gap-2.5">
             <img
-              :if={@current_user && @current_user.avatar_url}
+              :if={@current_user.avatar_url}
               src={@current_user.avatar_url}
               alt=""
               width="28"
@@ -71,7 +71,7 @@ defmodule CommitCraftWeb.Site do
               class="h-7 w-7 shrink-0 border-2 border-stone"
             />
             <span class="hidden font-pixel text-[11px] text-bone sm:inline">
-              {@current_user && @current_user.github_login}
+              {@current_user.github_login}
             </span>
           </a>
 

@@ -22,6 +22,7 @@ defmodule CommitCraft.Projects.Project do
     field :repo_full_name, :string
     field :repo_private, :boolean
     field :repo_connected_at, :utc_datetime
+    field :public, :boolean, default: false
 
     has_many :events, CommitCraft.Projects.Event
     has_many :webhooks, CommitCraft.Projects.Webhook

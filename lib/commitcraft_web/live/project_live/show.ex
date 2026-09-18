@@ -109,6 +109,23 @@ defmodule CommitCraftWeb.ProjectLive.Show do
     end
   end
 
+  def handle_event("toggle_public", _params, socket) do
+    %{current_user: user, project: project} = socket.assigns
+
+    case Projects.set_visibility(user, project.slug, not project.public) do
+      {:ok, project} ->
+        aviso =
+          if project.public,
+            do: "Página pública aberta. Qualquer um com o link vê este projeto.",
+            else: "Página pública fechada."
+
+        {:noreply, socket |> put_flash(:info, aviso) |> carregar(project)}
+
+      {:error, :not_found} ->
+        {:noreply, sumiu(socket)}
+    end
+  end
+
   def handle_event("disconnect_repo", _params, socket) do
     %{current_user: user, project: project} = socket.assigns
 
@@ -191,6 +208,7 @@ defmodule CommitCraftWeb.ProjectLive.Show do
     # A classe olha o histórico inteiro, não só os últimos que a tela mostra:
     # um projeto não deixa de ser Maratonista porque a lista foi cortada em 30.
     |> assign(:class, project |> Projects.list_events(limit: 500) |> Class.for_events())
+    |> assign(:reveal_titles, Projects.reveal_titles?(project))
   end
 
   defp remover_hook_do_github(user, project) do
@@ -201,6 +219,19 @@ defmodule CommitCraftWeb.ProjectLive.Show do
     end
 
     Projects.delete_webhook(project, "github")
+  end
+
+  @doc """
+  O trecho de markdown do selo, pronto para colar.
+
+  Montado aqui e não no template porque HEEx preserva a indentação dentro de
+  `whitespace-pre`, e o que a pessoa copia não pode vir com espaços na frente.
+  """
+  def markdown_do_selo(login, slug) do
+    pagina = url(~p"/p/#{login}/#{slug}")
+    selo = url(~p"/p/#{login}/#{slug}/badge.svg")
+
+    "[![CommitCraft](#{selo})](#{pagina})"
   end
 
   defp sumiu(socket) do

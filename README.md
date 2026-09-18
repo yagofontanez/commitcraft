@@ -185,6 +185,32 @@ WEBHOOK_BASE_URL=https://algo.ngrok-free.app mix phx.server
 Sem `WEBHOOK_BASE_URL` o repositório conecta mas o webhook não é instalado — e a
 tela do projeto diz exatamente isso, com um botão para tentar de novo.
 
+## A vitrine pública
+
+`/p/:login/:slug` é a única tela que qualquer pessoa abre. É **opt-in**: todo
+projeto nasce privado e tornar público é um ato, nunca um esquecimento.
+
+O cuidado que dita o desenho: **o mapa mostra mensagens de commit**. Publicar um
+projeto ligado a um repositório privado arrastaria junto uma coisa que a pessoa
+nunca pensou em publicar. Então `Projects.reveal_titles?/1` decide — repositório
+público mostra as mensagens (que já eram públicas), privado mostra o caminho sem
+as palavras, e a tela diz por quê antes e depois de publicar.
+
+O nome do repositório segue a mesma regra. Um teste conecta um repo privado,
+publica o projeto e verifica que nem a mensagem nem o nome do repositório
+aparecem.
+
+### O selo do README
+
+`/p/:login/:slug/badge.svg` devolve um SVG montado como string — sem biblioteca,
+porque um selo é retângulo e texto. Cuidados que os testes travam: a largura é
+calculada a partir do texto (SVG não tem layout, e uma conta errada faz a letra
+vazar para fora do fundo), e o nome do projeto é escapado, porque nome é escrito
+por gente e gente escreve `<`.
+
+Projeto fechado devolve um selo dizendo "não encontrado", não um erro — selo
+quebrado no README de alguém é pior do que selo que explica.
+
 ## O caminho, o som e a classe
 
 **O caminho** (`CommitCraftWeb.Game.journey/1`) é a linha do tempo desenhada
