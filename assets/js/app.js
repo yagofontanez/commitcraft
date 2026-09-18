@@ -25,11 +25,35 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/commitcraft"
 import topbar from "../vendor/topbar"
 
+// O caminho do projeto rola na horizontal e o que importa está no fim dele.
+//
+// Rolar até o fim sozinho só é gentil enquanto a pessoa não foi olhar o
+// passado: puxar a tela de volta no meio de uma leitura é pior do que não
+// rolar. Por isso o salto só acontece se ela já estava por perto do fim.
+const Jornada = {
+  mounted() {
+    this.aoFim("instant")
+  },
+
+  updated() {
+    if (this.pertoDoFim) this.aoFim("smooth")
+  },
+
+  beforeUpdate() {
+    const restante = this.el.scrollWidth - this.el.scrollLeft - this.el.clientWidth
+    this.pertoDoFim = restante < 240
+  },
+
+  aoFim(behavior) {
+    this.el.scrollTo({left: this.el.scrollWidth, behavior})
+  }
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, Jornada},
 })
 
 // Show progress bar on live navigation and form submits

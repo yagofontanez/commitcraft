@@ -26,14 +26,26 @@ defmodule CommitCraftWeb.ProjectLive.Show do
         # seguida, então inscrever ali deixaria assinatura órfã.
         if connected?(socket), do: Projects.subscribe(project)
 
-        {:ok, socket |> carregar(project) |> assign(:level_up, nil)}
+        {:ok,
+         socket
+         |> carregar(project)
+         |> assign(:level_up, nil)
+         # Vazio no primeiro render de propósito: sem isso, `phx-mounted`
+         # dispararia para tudo que já estava lá e a tela inteira piscaria como
+         # se o projeto todo tivesse acontecido agora.
+         |> assign(:recem_chegados, MapSet.new())}
     end
   end
 
   @impl true
-  def handle_info({:project_advanced, %{project: atualizado}}, socket) do
+  def handle_info({:project_advanced, %{project: atualizado} = novidade}, socket) do
     antes = socket.assigns.progress.level
-    socket = carregar(socket, atualizado)
+
+    socket =
+      socket
+      |> carregar(atualizado)
+      |> assign(:recem_chegados, ids_novos(novidade))
+
     depois = socket.assigns.progress.level
 
     socket =
@@ -139,12 +151,20 @@ defmodule CommitCraftWeb.ProjectLive.Show do
     end
   end
 
+  # O que acabou de chegar ganha animação; o resto entra em silêncio.
+  defp ids_novos(%{events: eventos, achievements: conquistas}) do
+    MapSet.new(
+      Enum.map(eventos, &{:event, &1.id}) ++ Enum.map(conquistas, &{:achievement, &1.id})
+    )
+  end
+
   defp carregar(socket, project) do
     if project.repo_full_name do
       for fonte <- ["vercel", "stripe"], do: Projects.ensure_webhook_token(project, fonte)
     end
 
     socket
+    |> assign_new(:recem_chegados, fn -> MapSet.new() end)
     |> assign(:page_title, project.name)
     |> assign(:project, project)
     |> assign(:progress, Level.progress(project.xp))

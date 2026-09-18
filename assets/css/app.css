@@ -335,6 +335,18 @@ svg { shape-rendering: crispEdges; }
   100% { background-color: transparent; transform: translateX(0); }
 }
 
+/* Bloco novo no caminho: nasce dourado e esfria, como peça que acabou de ser
+   colocada. */
+.bloco-entrada {
+  animation: bloco-entrada 700ms steps(6, end);
+}
+
+@keyframes bloco-entrada {
+  0%   { transform: translateY(14px); box-shadow: inset 0 3px var(--color-gold); }
+  60%  { transform: translateY(-3px); }
+  100% { transform: translateY(0); box-shadow: none; }
+}
+
 .medalha-entrada {
   animation: medalha-entrada 700ms steps(5, end);
 }
@@ -357,6 +369,7 @@ svg { shape-rendering: crispEdges; }
 
 @media (prefers-reduced-motion: reduce) {
   .evento-entrada,
+  .bloco-entrada,
   .medalha-entrada,
   .level-up-entrada {
     animation: none;

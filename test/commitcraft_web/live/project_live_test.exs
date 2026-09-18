@@ -96,6 +96,32 @@ defmodule CommitCraftWeb.ProjectLiveTest do
       assert render(live) =~ "Não Fui Eu"
     end
 
+    test "ao abrir, nada é marcado como novidade", %{conn: conn, user: user} do
+      project = project_fixture(user, %{name: "Meu"})
+      {:ok, _} = Projects.record_events(project, [commit("a", "coisa antiga")])
+
+      {:ok, _live, html} = live(conn, ~p"/jogar/meu")
+
+      # `phx-mounted` dispara para todo elemento que entra no DOM, inclusive no
+      # primeiro carregamento. Sem essa distinção, a tela inteira piscaria como
+      # se o projeto todo tivesse acontecido agora.
+      refute html =~ "bloco-entrada"
+      assert html =~ "coisa antiga"
+    end
+
+    test "o que chega ao vivo é marcado como novidade", %{conn: conn, user: user} do
+      project = project_fixture(user, %{name: "Meu"})
+      {:ok, _} = Projects.record_events(project, [commit("a", "coisa antiga")])
+
+      {:ok, live, _html} = live(conn, ~p"/jogar/meu")
+
+      {:ok, _} = Projects.record_events(project, [commit("b", "acabou de chegar")])
+      html = render(live)
+
+      assert html =~ "bloco-entrada"
+      assert html =~ "acabou de chegar"
+    end
+
     test "só recebe as novidades do próprio projeto", %{conn: conn, user: user} do
       project_fixture(user, %{name: "Meu"})
       outro = project_fixture(user, %{name: "Outro"})

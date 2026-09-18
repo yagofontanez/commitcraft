@@ -4,6 +4,157 @@ defmodule CommitCraftWeb.Game do
   """
   use Phoenix.Component
 
+  import CommitCraftWeb.Pixel
+
+  alias Phoenix.LiveView.JS
+
+  @doc """
+  O céu noturno, com estrelas.
+
+  As posições vêm de uma conta e não de sorteio: sorteio no servidor faria as
+  estrelas pularem de lugar a cada render do LiveView.
+  """
+  attr :class, :string, default: nil
+
+  def stars(assigns) do
+    ~H"""
+    <div class={["stars pointer-events-none absolute inset-0", @class]} aria-hidden="true">
+      <span
+        :for={i <- 0..47}
+        class="twinkle"
+        style={"left:#{rem(i * 37, 100)}%; top:#{rem(i * 53, 62)}%; animation-delay:#{rem(i * 7, 32) / 10}s"}
+      ></span>
+    </div>
+    """
+  end
+
+  @doc "As montanhas em degraus: o horizonte também é feito de pixels."
+  attr :class, :string, default: nil
+
+  def hills(assigns) do
+    ~H"""
+    <svg
+      class={["relative block w-full", @class]}
+      viewBox="0 0 1200 90"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <polygon
+        fill="#33285c"
+        points="0,90 0,70 60,70 60,55 140,55 140,40 220,40 220,52 300,52 300,35 400,35 400,60 480,60 480,48 560,48 560,30 660,30 660,58 740,58 740,45 840,45 840,62 920,62 920,38 1020,38 1020,55 1100,55 1100,70 1200,70 1200,90"
+      />
+      <polygon
+        fill="#1c1533"
+        points="0,90 0,80 90,80 90,68 180,68 180,76 280,76 280,60 380,60 380,72 470,72 470,64 570,64 570,78 680,78 680,66 780,66 780,74 880,74 880,62 980,62 980,75 1080,75 1080,68 1200,68 1200,90"
+      />
+    </svg>
+    """
+  end
+
+  @doc """
+  O caminho já percorrido: cada acontecimento vira um bloco de chão.
+
+  É a promessa da página inicial cumprida com dado real. A ordem é a do tempo,
+  do mais antigo à esquerda para o mais recente à direita — e é sobre o bloco
+  mais recente que o artesão fica de pé.
+  """
+  attr :events, :list, required: true
+  attr :listening, :boolean, default: false
+  attr :recem_chegados, :any, default: nil
+
+  def journey(assigns) do
+    # O mais antigo primeiro: o caminho se lê da esquerda para a direita, como
+    # qualquer linha do tempo.
+    assigns = assign(assigns, :blocos, Enum.reverse(assigns.events))
+
+    ~H"""
+    <div class="sky relative overflow-hidden">
+      <.stars />
+
+      <div class="relative pt-10">
+        <.hills class="h-16 md:h-20" />
+
+        <div class="relative bg-[#1c1533]">
+          <%!-- O artesão fica no fim do caminho, em cima do que acabou de
+                acontecer. --%>
+          <div class="pointer-events-none absolute right-6 bottom-full z-20 md:right-10">
+            <.crafter class="h-16 w-16 md:h-20 md:w-20" />
+          </div>
+
+          <div
+            id="jornada"
+            phx-hook="Jornada"
+            tabindex="0"
+            role="group"
+            aria-label="Caminho do projeto, do mais antigo ao mais recente"
+            class="flex overflow-x-auto focus:outline-none focus-visible:outline-3 focus-visible:outline-gold"
+          >
+            <div
+              :for={event <- @blocos}
+              id={"bloco-#{event.id}"}
+              phx-mounted={
+                novidade?(@recem_chegados, :event, event.id) &&
+                  JS.transition({"bloco-entrada", "opacity-0", "opacity-100"}, time: 700)
+              }
+              title={"#{event.title} · #{Calendar.strftime(event.occurred_at, "%d/%m/%Y %H:%M")}"}
+              class={[
+                "shrink-0 border-r-[3px] border-b-[3px] border-ink px-4 py-3",
+                "w-[150px] md:w-[172px]",
+                bloco_altura(event.kind),
+                bloco_cor(event.kind)
+              ]}
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-pixel text-[10px] opacity-80">{event_label(event.kind)}</span>
+                <span class="font-pixel text-[10px]">
+                  {if event.xp > 0, do: "+#{event.xp}", else: event.xp}
+                </span>
+              </div>
+              <p class="mt-2 line-clamp-2 text-xs leading-snug text-bone/75">{event.title}</p>
+            </div>
+
+            <%!-- Sem nada gravado, o chão ainda existe: o caminho começa vazio,
+                  não quebrado. --%>
+            <div
+              :if={@blocos == []}
+              class="flex h-24 w-full shrink-0 items-center justify-center bg-panel px-6 md:h-28"
+            >
+              <p class="font-pixel text-[11px] text-muted">
+                {if @listening,
+                  do: "o caminho começa no seu próximo commit",
+                  else: "conecte um repositório para o caminho começar"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Se um item acabou de chegar ao vivo.
+
+  `phx-mounted` dispara sempre que um elemento entra no DOM — inclusive no
+  primeiro carregamento, quando nada é novidade. Marcar explicitamente o que
+  chegou agora é o que impede a tela inteira de piscar ao abrir.
+  """
+  def novidade?(nil, _tipo, _id), do: false
+  def novidade?(conjunto, tipo, id), do: MapSet.member?(conjunto, {tipo, id})
+
+  # Build quebrado afunda o chão: é um buraco no caminho, e lê como buraco sem
+  # precisar de legenda.
+  defp bloco_altura("broken_build"), do: "h-16 self-end md:h-20"
+  defp bloco_altura(_outro), do: "h-24 md:h-28"
+
+  defp bloco_cor("deploy"), do: "bg-[#1b3326] text-moss"
+  defp bloco_cor("broken_build"), do: "bg-[#3a1b1b] text-ember"
+  defp bloco_cor("first_sale"), do: "bg-[#3a2c14] text-gold"
+  defp bloco_cor("sale"), do: "bg-[#33290f] text-gold"
+  defp bloco_cor("streak_week"), do: "bg-[#2b2350] text-violet"
+  defp bloco_cor("pull_request_merged"), do: "bg-[#241b3d] text-bone"
+  defp bloco_cor(_outro), do: "bg-panel text-muted"
+
   @doc """
   O painel de nível e XP.
 
@@ -100,7 +251,7 @@ defmodule CommitCraftWeb.Game do
     <div class="frame px-6 py-6">
       <div class="flex items-start gap-4">
         <div class="frame-thin flex h-12 w-12 shrink-0 items-center justify-center">
-          <CommitCraftWeb.Pixel.sprite name={@sprite} class="h-6 w-6" />
+          <.sprite name={@sprite} class="h-6 w-6" />
         </div>
 
         <div class="min-w-0 flex-1">

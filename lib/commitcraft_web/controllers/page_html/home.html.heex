@@ -12,13 +12,7 @@
 <%!-- ─────────────────────────── tela de título ─────────────────────────── --%>
 
 <section class="sky relative overflow-hidden">
-  <div class="stars pointer-events-none absolute inset-0" aria-hidden="true">
-    <span
-      :for={i <- 0..47}
-      class="twinkle"
-      style={"left:#{rem(i * 37, 100)}%; top:#{rem(i * 53, 62)}%; animation-delay:#{rem(i * 7, 32) / 10}s"}
-    ></span>
-  </div>
+  <.stars />
 
   <div class="relative mx-auto max-w-4xl px-6 pt-12 pb-16 text-center md:pt-16 md:pb-20">
     <%!-- Os números saem da curva de verdade, não escritos à mão: se o ritmo do
@@ -40,22 +34,7 @@
     </p>
   </div>
 
-  <%!-- montanhas em degraus: o horizonte também é feito de pixels --%>
-  <svg
-    class="relative block h-20 w-full md:h-28"
-    viewBox="0 0 1200 90"
-    preserveAspectRatio="none"
-    aria-hidden="true"
-  >
-    <polygon
-      fill="#33285c"
-      points="0,90 0,70 60,70 60,55 140,55 140,40 220,40 220,52 300,52 300,35 400,35 400,60 480,60 480,48 560,48 560,30 660,30 660,58 740,58 740,45 840,45 840,62 920,62 920,38 1020,38 1020,55 1100,55 1100,70 1200,70 1200,90"
-    />
-    <polygon
-      fill="#1c1533"
-      points="0,90 0,80 90,80 90,68 180,68 180,76 280,76 280,60 380,60 380,72 470,72 470,64 570,64 570,78 680,78 680,66 780,66 780,74 880,74 880,62 980,62 980,75 1080,75 1080,68 1200,68 1200,90"
-    />
-  </svg>
+  <.hills class="h-20 md:h-28" />
 
   <%!-- o chão: uma fita de commits que rola, e o artesão andando em cima --%>
   <div class="relative bg-[#1c1533] pt-1">

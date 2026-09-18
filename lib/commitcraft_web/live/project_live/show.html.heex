@@ -165,7 +165,10 @@
       <li
         :for={conquista <- @achievements}
         id={"achievement-#{conquista.id}"}
-        phx-mounted={JS.transition({"medalha-entrada", "opacity-0", "opacity-100"}, time: 700)}
+        phx-mounted={
+          novidade?(@recem_chegados, :achievement, conquista.id) &&
+            JS.transition({"medalha-entrada", "opacity-0", "opacity-100"}, time: 700)
+        }
         class="frame px-6 py-6"
       >
         <% catalogo = CommitCraft.Game.Achievements.get(conquista.key) %>
@@ -180,41 +183,41 @@
   </div>
 
   <div class="mt-16">
-    <h2 class="font-pixel text-sm text-gold">Linha do tempo</h2>
+    <h2 class="font-pixel text-sm text-gold">O caminho</h2>
 
-    <div
-      :if={@events == []}
-      class="frame mt-8 flex flex-col items-center gap-5 px-8 py-16 text-center"
-    >
-      <.sprite name={:commits} class="h-10 w-10" recolor={%{"n" => "#6b5c99", "l" => "#4a3f75"}} />
-      <p class="font-pixel text-[13px] leading-relaxed text-muted">Nada aconteceu ainda</p>
-      <p class="max-w-md text-sm leading-relaxed text-muted">
-        {if @listening?,
-          do: "Faça um commit na branch principal e ele aparece aqui, sem recarregar a página.",
-          else:
-            "Conecte um repositório e cada commit, pull request e issue fechada passa a cair aqui."}
-      </p>
+    <p class="mt-4 max-w-2xl text-sm leading-relaxed text-muted">
+      Cada bloco é uma coisa que aconteceu. O mais antigo à esquerda, o mais
+      recente à direita — e é sobre ele que você está de pé.
+    </p>
+
+    <div class="mt-8">
+      <.journey events={@events} listening={@listening?} recem_chegados={@recem_chegados} />
     </div>
 
-    <%!-- `phx-mounted` só dispara em elemento novo no DOM, então a animação
-          marca exatamente o que acabou de chegar — e nada mais. --%>
-    <ul :if={@events != []} id="linha-do-tempo" class="mt-8 space-y-px">
-      <li
-        :for={event <- @events}
-        id={"event-#{event.id}"}
-        phx-mounted={JS.transition({"evento-entrada", "opacity-0", "opacity-100"}, time: 900)}
-        class="flex flex-wrap items-baseline gap-x-5 gap-y-1 bg-panel/60 px-6 py-4"
-      >
-        <span class={["shrink-0 font-pixel text-[11px]", event_tone(event.xp)]}>
-          {if event.xp > 0, do: "+#{event.xp}", else: event.xp}
-        </span>
-        <span class="min-w-0 flex-1 truncate text-sm text-bone">{event.title}</span>
-        <span class="shrink-0 text-xs text-muted">{event_label(event.kind)}</span>
-        <span class="shrink-0 font-pixel text-[10px] text-muted">
-          {Calendar.strftime(event.occurred_at, "%d/%m %H:%M")}
-        </span>
-      </li>
-    </ul>
+    <%!-- A lista continua embaixo: o mapa é bom para sentir o percurso, a lista
+          é melhor para ler muita coisa de uma vez. --%>
+    <details :if={@events != []} class="group mt-8">
+      <summary class="inline-flex cursor-pointer list-none items-center gap-2 text-sm text-muted transition-colors hover:text-bone [&::-webkit-details-marker]:hidden">
+        <span class="font-pixel text-[10px] text-muted group-open:text-gold">&#9660;</span>
+        Ver como lista
+      </summary>
+
+      <ul class="mt-6 space-y-px">
+        <li
+          :for={event <- @events}
+          class="flex flex-wrap items-baseline gap-x-5 gap-y-1 bg-panel/60 px-6 py-4"
+        >
+          <span class={["shrink-0 font-pixel text-[11px]", event_tone(event.xp)]}>
+            {if event.xp > 0, do: "+#{event.xp}", else: event.xp}
+          </span>
+          <span class="min-w-0 flex-1 truncate text-sm text-bone">{event.title}</span>
+          <span class="shrink-0 text-xs text-muted">{event_label(event.kind)}</span>
+          <span class="shrink-0 font-pixel text-[10px] text-muted">
+            {Calendar.strftime(event.occurred_at, "%d/%m %H:%M")}
+          </span>
+        </li>
+      </ul>
+    </details>
   </div>
 
   <%!-- Apagar fica atrás de um <details>: um clique abre, outro confirma. O
