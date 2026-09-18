@@ -1,7 +1,7 @@
 <.flashes flash={@flash} />
-<.site_header current_user={@current_user} />
+<.site_header current_user={@current_user} width="full" />
 
-<main class="mx-auto max-w-3xl px-8 py-20 md:py-28">
+<main class="px-6 py-16 md:px-10 md:py-20">
   <div class="flex items-center gap-5">
     <img
       :if={@current_user.avatar_url}
@@ -24,13 +24,10 @@
   <h2 class="font-pixel text-sm text-gold">Seus projetos</h2>
 
   <%!-- A vaga vazia de save: a tela já mostra a forma do que vem, em vez de
-        esconder que ainda não tem nada. --%>
-  <div class="frame mt-8 flex flex-col items-center gap-5 px-8 py-14 text-center">
-    <.sprite
-      name={:commits}
-      class="h-10 w-10"
-      recolor={%{"n" => "#3d3160", "l" => "#2f2450"}}
-    />
+        esconder que ainda não tem nada. Ocupa a largura toda porque é aqui que
+        a grade de projetos vai crescer. --%>
+  <div class="frame mt-8 flex flex-col items-center gap-5 px-8 py-20 text-center">
+    <.sprite name={:commits} class="h-12 w-12" recolor={%{"n" => "#6b5c99", "l" => "#4a3f75"}} />
     <p class="font-pixel text-[13px] leading-relaxed text-muted">Vaga vazia</p>
     <p class="max-w-sm text-sm leading-relaxed text-muted">
       É aqui que seus projetos vão aparecer, cada um com seu nível e sua barra de XP.
@@ -38,11 +35,12 @@
     </p>
   </div>
 
-  <p class="mt-10 text-sm leading-relaxed text-muted">
+  <%!-- Texto corrido continua estreito: linha de 1500px ninguém lê. --%>
+  <p class="mt-10 max-w-2xl text-sm leading-relaxed text-muted">
     Por enquanto o CommitCraft só sabe quem você é. Ele pediu apenas permissão de
     leitura do seu perfil — nada de código. Quando chegar a hora de conectar um
     repositório, ele vai pedir esse acesso separado, e você decide na hora.
   </p>
 </main>
 
-<.site_footer />
+<.site_footer width="full" />

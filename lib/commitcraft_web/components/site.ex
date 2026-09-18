@@ -14,12 +14,17 @@ defmodule CommitCraftWeb.Site do
   de estarem embutidos aqui.
   """
   attr :current_user, :any, default: nil
+  attr :width, :string, default: "contained", values: ~w(contained full)
   slot :nav
 
   def site_header(assigns) do
     ~H"""
     <header class="relative z-30 border-b-[3px] border-stone/60 bg-void/80 backdrop-blur-sm">
-      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:gap-6 sm:px-6">
+      <div class={[
+        "flex items-center justify-between gap-4 px-4 py-4 sm:gap-6 sm:px-6",
+        @width == "contained" && "mx-auto max-w-6xl",
+        @width == "full" && "md:px-10"
+      ]}>
         <a href={~p"/"} class="flex min-w-0 items-center gap-3">
           <.sprite name={:coin} class="h-6 w-6 shrink-0 coin-spin sm:h-7 sm:w-7" />
           <span class="truncate font-pixel text-sm text-bone sm:text-base md:text-lg">
@@ -64,10 +69,16 @@ defmodule CommitCraftWeb.Site do
   end
 
   @doc "O rodapé."
+  attr :width, :string, default: "contained", values: ~w(contained full)
+
   def site_footer(assigns) do
     ~H"""
     <footer class="border-t-[3px] border-stone/50 py-12">
-      <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-6 text-sm text-muted sm:flex-row">
+      <div class={[
+        "flex flex-col items-center justify-between gap-5 px-6 text-sm text-muted sm:flex-row",
+        @width == "contained" && "mx-auto max-w-6xl",
+        @width == "full" && "md:px-10"
+      ]}>
         <div class="flex items-center gap-3">
           <.sprite name={:coin} class="h-5 w-5" />
           <span class="font-pixel text-xs text-bone">CommitCraft</span>
