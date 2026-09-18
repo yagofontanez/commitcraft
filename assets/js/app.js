@@ -129,3 +129,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   targets.forEach(el => observer.observe(el))
 })
+
+// As mensagens do sistema aparecem em páginas comuns, sem LiveView, então não
+// há quem as recolha. Somem no clique, e sozinhas depois de alguns segundos.
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-flash]").forEach((flash) => {
+    const dismiss = () => flash.remove()
+
+    flash.addEventListener("click", dismiss)
+    setTimeout(dismiss, 6000)
+  })
+})

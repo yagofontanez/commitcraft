@@ -35,4 +35,13 @@ defmodule CommitCraftWeb.ConnCase do
     CommitCraft.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc """
+  Abre a sessão de um usuário, do mesmo jeito que o login abriria.
+  """
+  def log_in_user(conn, user) do
+    conn
+    |> Phoenix.ConnTest.init_test_session(%{})
+    |> Plug.Conn.put_session(:user_id, user.id)
+  end
 end

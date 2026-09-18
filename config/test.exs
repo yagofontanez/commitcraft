@@ -33,3 +33,10 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# Nenhum teste fala com o GitHub de verdade: o Req é desviado para um plug.
+config :commitcraft, CommitCraft.GitHub.OAuth,
+  client_id: "client-id-de-teste",
+  client_secret: "client-secret-de-teste"
+
+config :commitcraft, github_req_options: [plug: {Req.Test, CommitCraft.GitHub.OAuth}]

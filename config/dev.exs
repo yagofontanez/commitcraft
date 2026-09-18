@@ -72,3 +72,10 @@ config :phoenix_live_view,
   debug_attributes: true,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
+
+# Credenciais do OAuth App do GitHub. Crie um em
+# https://github.com/settings/developers com a callback URL
+# http://localhost:4000/auth/github/callback e exporte as duas variáveis.
+config :commitcraft, CommitCraft.GitHub.OAuth,
+  client_id: System.get_env("GITHUB_CLIENT_ID"),
+  client_secret: System.get_env("GITHUB_CLIENT_SECRET")

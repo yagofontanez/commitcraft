@@ -117,3 +117,13 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 end
+
+if config_env() == :prod do
+  config :commitcraft, CommitCraft.GitHub.OAuth,
+    client_id:
+      System.get_env("GITHUB_CLIENT_ID") ||
+        raise("falta a variável GITHUB_CLIENT_ID: sem ela ninguém consegue entrar"),
+    client_secret:
+      System.get_env("GITHUB_CLIENT_SECRET") ||
+        raise("falta a variável GITHUB_CLIENT_SECRET: sem ela ninguém consegue entrar")
+end

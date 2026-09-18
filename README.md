@@ -8,13 +8,47 @@ Sem assinatura e sem plano pago. Se o jogo for útil, dá para deixar uma moeda.
 
 ## Estado atual
 
-Só a landing page. O jogo não existe ainda: não há autenticação, integração com
-GitHub, Vercel ou Stripe, nem motor de XP. Os números que aparecem na página são
-ilustrativos e vivem em `lib/commitcraft_web/controllers/page_controller.ex`.
+Landing page e login com GitHub. O jogo em si ainda não existe: não há projeto,
+integração com repositório nem motor de XP. Os números que aparecem na página
+são ilustrativos e vivem em `lib/commitcraft_web/controllers/page_controller.ex`.
 
-A página não coleta nada e não tem formulário nenhum — enquanto o jogo não
-estiver pronto, ela não promete acesso a quem ainda não pode entrar. O banco
-existe, mas ainda sem tabelas.
+Depois de entrar, `/jogar` mostra uma vaga de save vazia — é ali que os projetos
+vão aparecer.
+
+## Login
+
+A única porta de entrada é o OAuth do GitHub: sem senha, sem e-mail, sem mailer.
+Quem usa o CommitCraft tem GitHub por definição, e o token que sai do login é o
+mesmo que vai ler commits mais tarde.
+
+Duas coisas que valem a atenção de quem mexer aqui:
+
+- **O login pede só `read:user`.** O escopo `repo`, que dá acesso ao código, só
+  será pedido quando a pessoa for de fato conectar um repositório. Por isso os
+  escopos concedidos são guardados junto do token: é assim que se sabe, depois,
+  se já há permissão ou se é preciso mandar autorizar de novo.
+- **O token é cifrado no banco** (`CommitCraft.EncryptedBinary`), com chave
+  derivada do `secret_key_base`. Trocar esse segredo torna os tokens ilegíveis;
+  isso é tratado como "precisa entrar de novo", não como erro.
+
+### Configurando o OAuth App
+
+Crie um em <https://github.com/settings/developers> → *New OAuth App*:
+
+| Campo | Valor em desenvolvimento |
+| --- | --- |
+| Homepage URL | `http://localhost:4000` |
+| Authorization callback URL | `http://localhost:4000/auth/github/callback` |
+
+Depois exporte as credenciais antes de subir o servidor:
+
+```sh
+export GITHUB_CLIENT_ID=Ov23li...
+export GITHUB_CLIENT_SECRET=...
+```
+
+Sem elas o servidor sobe normalmente e o botão de entrar responde com um aviso —
+em produção, `config/runtime.exs` recusa iniciar sem as duas.
 
 ## Rodando
 
