@@ -1,9 +1,9 @@
 defmodule CommitCraftWeb.WebhookController do
   @moduledoc """
-  A porta por onde o GitHub conta o que aconteceu.
+  A porta por onde GitHub, Vercel e Stripe contam o que aconteceu.
 
-  Esta é a única rota pública que aceita escrita sem sessão, então tudo aqui
-  parte do princípio de que quem bate pode não ser o GitHub.
+  É a única rota pública que aceita escrita sem sessão, então tudo aqui parte do
+  princípio de que quem bate pode não ser quem diz ser.
   """
   use CommitCraftWeb, :controller
 
@@ -11,84 +11,86 @@ defmodule CommitCraftWeb.WebhookController do
 
   alias CommitCraft.Game.Rules
   alias CommitCraft.Projects
+  alias CommitCraftWeb.WebhookSignature
 
   @doc """
-  Recebe uma entrega do GitHub.
+  Recebe uma entrega.
 
-  A resposta é sempre rápida e curta: o GitHub desiste de entregas lentas e
-  passa a considerar o webhook quebrado.
+  A resposta é sempre curta e rápida: os três serviços desistem de entregas
+  lentas e passam a considerar o webhook quebrado.
   """
-  def github(conn, %{"token" => token}) do
-    evento = get_req_header(conn, "x-github-event") |> List.first()
-    assinatura = get_req_header(conn, "x-hub-signature-256") |> List.first()
-
-    with {:ok, project} <- achar_projeto(token),
-         :ok <- conferir_assinatura(conn, project, assinatura) do
-      processar(conn, project, evento)
+  def receive(conn, %{"source" => source, "token" => token}) do
+    with :ok <- fonte_conhecida(source),
+         {:ok, webhook, project} <- achar(token, source),
+         :ok <- conferir(conn, source, webhook) do
+      processar(conn, source, project)
     else
       {:error, :nao_encontrado} ->
-        # Não dizemos se o token existe: quem está tentando adivinhar não ganha
-        # nenhuma pista de qual tentativa chegou mais perto.
+        # Não dizemos se o token existe: quem estiver adivinhando não ganha
+        # pista de qual tentativa chegou mais perto.
         responder(conn, 404, "no")
 
-      {:error, :assinatura} ->
-        Logger.warning("webhook com assinatura inválida em #{inspect(token)}")
+      {:error, motivo} ->
+        Logger.warning("webhook #{source} recusado: #{inspect(motivo)}")
         responder(conn, 401, "no")
     end
   end
 
-  defp processar(conn, project, evento) do
-    acontecimentos = Rules.events_for(to_string(evento), conn.body_params)
+  defp processar(conn, source, project) do
+    evento = nome_do_evento(conn, source)
+    contexto = %{first_sale?: not Projects.has_event_kind?(project, "first_sale")}
 
-    case acontecimentos do
+    case Rules.events_for(source, evento, conn.body_params, contexto) do
       [] ->
-        # `ping` e eventos que o jogo ignora caem aqui. Responder 200 é o certo:
-        # não houve erro, só não havia nada a pontuar.
+        # Ping da criação do webhook, deploy de preview, evento que o jogo
+        # ignora. Não houve erro — só não havia nada a pontuar.
         responder(conn, 200, "ok")
 
-      lista ->
-        {:ok, %{project: atualizado, events: novos}} = Projects.record_events(project, lista)
+      acontecimentos ->
+        {:ok, %{project: atualizado, events: novos}} =
+          Projects.record_events(project, acontecimentos)
 
         Logger.info(
-          "webhook #{evento} em #{project.repo_full_name}: " <>
-            "#{length(novos)} de #{length(lista)} novos, XP agora #{atualizado.xp}"
+          "webhook #{source}/#{evento} em #{project.name}: " <>
+            "#{length(novos)} de #{length(acontecimentos)} novos, XP agora #{atualizado.xp}"
         )
 
         responder(conn, 200, "ok")
     end
   end
 
-  defp achar_projeto(token) do
-    case Projects.get_project_by_webhook_token(token) do
-      nil -> {:error, :nao_encontrado}
-      project -> {:ok, project}
+  # Cada serviço põe o nome do evento num lugar diferente: GitHub e Vercel num
+  # cabeçalho, Stripe dentro do próprio corpo.
+  defp nome_do_evento(conn, "github"),
+    do: conn |> get_req_header("x-github-event") |> List.first() |> to_string()
+
+  defp nome_do_evento(conn, "vercel"), do: to_string(conn.body_params["type"])
+  defp nome_do_evento(conn, "stripe"), do: to_string(conn.body_params["type"])
+
+  defp fonte_conhecida(source) do
+    if source in CommitCraft.Projects.Webhook.sources(),
+      do: :ok,
+      else: {:error, :nao_encontrado}
+  end
+
+  defp achar(token, source) do
+    case Projects.get_webhook_by_token(token) do
+      # O token tem que bater com a fonte da URL: sem isso, um token de GitHub
+      # entregue em /webhooks/stripe seria conferido com o algoritmo errado.
+      {%{source: ^source} = webhook, project} -> {:ok, webhook, project}
+      _outro -> {:error, :nao_encontrado}
     end
   end
 
-  # A assinatura é HMAC-SHA256 do corpo cru com o segredo do projeto. Comparar
-  # com `secure_compare` e não com `==` porque a comparação ingênua vaza, pelo
-  # tempo que leva, quantos bytes iniciais estavam certos.
-  defp conferir_assinatura(conn, project, "sha256=" <> recebida) do
+  defp conferir(conn, source, webhook) do
     corpo = conn.assigns[:raw_body]
-    segredo = project.webhook_secret
 
     cond do
-      is_nil(segredo) or is_nil(corpo) ->
-        {:error, :assinatura}
-
-      true ->
-        esperada =
-          :hmac
-          |> :crypto.mac(:sha256, segredo, corpo)
-          |> Base.encode16(case: :lower)
-
-        if Plug.Crypto.secure_compare(esperada, String.downcase(recebida)),
-          do: :ok,
-          else: {:error, :assinatura}
+      is_nil(webhook.secret) -> {:error, :sem_segredo}
+      is_nil(corpo) -> {:error, :sem_corpo}
+      true -> WebhookSignature.verify(source, corpo, webhook.secret, conn.req_headers)
     end
   end
-
-  defp conferir_assinatura(_conn, _project, _outra), do: {:error, :assinatura}
 
   defp responder(conn, status, corpo) do
     conn

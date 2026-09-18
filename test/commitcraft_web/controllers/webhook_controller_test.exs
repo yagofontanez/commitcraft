@@ -19,7 +19,12 @@ defmodule CommitCraftWeb.WebhookControllerTest do
         private: false
       })
 
-    {:ok, project} = Projects.record_webhook(project, 555, "token-do-webhook", @secret)
+    {:ok, _webhook} =
+      Projects.put_webhook(project, "github", %{
+        token: "token-do-webhook",
+        secret: @secret,
+        external_id: "555"
+      })
 
     %{user: user, project: project}
   end
@@ -209,6 +214,91 @@ defmodule CommitCraftWeb.WebhookControllerTest do
       conn = entregar(conn, "token-do-webhook", "star", %{"action" => "created"})
 
       assert response(conn, 200)
+    end
+  end
+
+  describe "Vercel e Stripe" do
+    setup %{user: user, project: project} do
+      {:ok, _} = Projects.put_webhook(project, "vercel", %{token: "tok-vercel", secret: @secret})
+      {:ok, _} = Projects.put_webhook(project, "stripe", %{token: "tok-stripe", secret: @secret})
+      :ok
+    end
+
+    test "deploy de produção da Vercel pontua", %{conn: conn, user: user} do
+      corpo =
+        Jason.encode!(%{
+          "type" => "deployment.succeeded",
+          "id" => "evt_1",
+          "createdAt" => 1_789_000_000_000,
+          "payload" => %{"target" => "production", "deployment" => %{"id" => "dpl_1"}}
+        })
+
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> put_req_header(
+          "x-vercel-signature",
+          Base.encode16(:crypto.mac(:hmac, :sha, @secret, corpo), case: :lower)
+        )
+        |> post("/webhooks/vercel/tok-vercel", corpo)
+
+      assert response(conn, 200)
+      assert Projects.get_project(user, "meu").xp == 25
+    end
+
+    test "a primeira venda vale 250 e a segunda vira rotina", %{user: user} do
+      for id <- ["cs_1", "cs_2"] do
+        corpo =
+          Jason.encode!(%{
+            "type" => "checkout.session.completed",
+            "id" => "evt_#{id}",
+            "created" => System.system_time(:second),
+            "data" => %{
+              "object" => %{"id" => id, "amount_total" => 2900, "currency" => "brl"}
+            }
+          })
+
+        carimbo = System.system_time(:second)
+
+        assinatura =
+          Base.encode16(:crypto.mac(:hmac, :sha256, @secret, "#{carimbo}.#{corpo}"), case: :lower)
+
+        build_conn()
+        |> put_req_header("content-type", "application/json")
+        |> put_req_header("stripe-signature", "t=#{carimbo},v1=#{assinatura}")
+        |> post("/webhooks/stripe/tok-stripe", corpo)
+      end
+
+      # 250 pela primeira, 20 pela segunda.
+      assert Projects.get_project(user, "meu").xp == 270
+
+      tipos = Projects.get_project(user, "meu") |> Projects.list_events() |> Enum.map(& &1.kind)
+      assert "first_sale" in tipos
+      assert "sale" in tipos
+    end
+
+    test "token de uma fonte não vale para outra", %{conn: conn, user: user} do
+      corpo = Jason.encode!(%{"type" => "deployment.succeeded"})
+
+      # Entregar um token de Vercel na rota da Stripe: sem esta conferência a
+      # assinatura seria checada com o algoritmo errado.
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> put_req_header("stripe-signature", "t=1,v1=abc")
+        |> post("/webhooks/stripe/tok-vercel", corpo)
+
+      assert response(conn, 404)
+      assert Projects.get_project(user, "meu").xp == 0
+    end
+
+    test "fonte que não existe responde 404", %{conn: conn} do
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/webhooks/inventada/tok-vercel", Jason.encode!(%{}))
+
+      assert response(conn, 404)
     end
   end
 

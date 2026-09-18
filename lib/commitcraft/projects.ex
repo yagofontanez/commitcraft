@@ -11,6 +11,7 @@ defmodule CommitCraft.Projects do
   alias CommitCraft.Accounts.User
   alias CommitCraft.Projects.Event
   alias CommitCraft.Projects.Project
+  alias CommitCraft.Projects.Webhook
   alias CommitCraft.Repo
 
   @doc "Os projetos de alguém, do mais recente para o mais antigo."
@@ -59,45 +60,110 @@ defmodule CommitCraft.Projects do
   end
 
   @doc """
-  Guarda os dados do webhook recém-criado no GitHub.
+  O webhook e o projeto dono dele, achados pelo identificador que vai na URL.
 
-  O segredo é sorteado aqui, por projeto: se um vazar, o estrago fica num
-  repositório só.
+  Devolve `{webhook, project}` — o receptor precisa dos dois, e uma consulta só
+  evita ida e volta extra num caminho que roda a cada entrega.
   """
-  def record_webhook(%Project{} = project, hook_id, token, secret) do
-    project
-    |> Ecto.Changeset.change(
-      webhook_id: hook_id,
-      webhook_token: token,
-      webhook_secret: secret,
-      webhook_installed_at: DateTime.utc_now(:second)
-    )
-    |> Repo.update()
+  def get_webhook_by_token(token) when is_binary(token) do
+    Webhook
+    |> where(token: ^token)
+    |> preload(:project)
+    |> Repo.one()
+    |> case do
+      nil -> nil
+      %Webhook{project: project} = webhook -> {webhook, project}
+    end
   end
 
-  @doc "Esquece o webhook, sem tocar no repositório nem no XP."
-  def clear_webhook(%Project{} = project) do
-    project
-    |> Ecto.Changeset.change(
-      webhook_id: nil,
-      webhook_token: nil,
-      webhook_secret: nil,
-      webhook_installed_at: nil
-    )
-    |> Repo.update()
+  @doc "O webhook de uma fonte para um projeto, se existir."
+  def get_webhook(%Project{} = project, source) when is_binary(source) do
+    Repo.get_by(Webhook, project_id: project.id, source: source)
   end
 
-  @doc "Credenciais novas para um webhook: o que vai na URL e o que assina."
-  def new_webhook_credentials do
-    %{
-      token: Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false),
-      secret: Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
-    }
+  @doc "Todos os webhooks de um projeto, indexados pela fonte."
+  def webhooks_by_source(%Project{} = project) do
+    Webhook
+    |> where(project_id: ^project.id)
+    |> Repo.all()
+    |> Map.new(&{&1.source, &1})
   end
+
+  @doc """
+  Guarda (ou substitui) o webhook de uma fonte.
+
+  O segredo é por projeto e por fonte: se um vazar, o estrago não se espalha
+  para os outros. Para GitHub nós o sorteamos; para Vercel e Stripe ele vem do
+  painel do próprio serviço, onde quem manda é quem configurou.
+  """
+  def put_webhook(%Project{} = project, source, attrs) do
+    existente = get_webhook(project, source) || %Webhook{project_id: project.id}
+
+    atributos =
+      attrs
+      |> Map.new(fn {chave, valor} -> {to_string(chave), valor} end)
+      |> Map.put("source", source)
+      |> Map.put_new("token", new_webhook_token())
+      |> Map.put_new("installed_at", DateTime.utc_now(:second))
+
+    existente
+    |> Webhook.changeset(atributos)
+    |> Repo.insert_or_update()
+  end
+
+  @doc "Esquece o webhook de uma fonte, sem tocar no XP já conquistado."
+  def delete_webhook(%Project{} = project, source) do
+    case get_webhook(project, source) do
+      nil -> :ok
+      webhook -> Repo.delete!(webhook) && :ok
+    end
+  end
+
+  @doc """
+  Garante que existe um endereço para uma fonte, mesmo antes de haver segredo.
+
+  A ordem importa: para criar o webhook no painel da Vercel ou da Stripe é
+  preciso colar a URL lá primeiro, e só então copiar de volta o segredo que
+  elas geram. Se o endereço só existisse depois do segredo, não haveria por
+  onde começar.
+  """
+  def ensure_webhook_token(%Project{} = project, source) do
+    case get_webhook(project, source) do
+      nil ->
+        {:ok, webhook} = put_webhook(project, source, %{})
+        webhook
+
+      webhook ->
+        webhook
+    end
+  end
+
+  @doc """
+  Se a fonte está de fato escutando.
+
+  Ter endereço não basta: sem segredo não dá para conferir assinatura, e sem
+  conferir assinatura nada é aceito.
+  """
+  def connected?(nil), do: false
+  def connected?(%Webhook{secret: secret}), do: not is_nil(secret)
+
+  @doc "Um identificador novo para pôr na URL de um webhook."
+  def new_webhook_token, do: Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false)
+
+  @doc "Um segredo novo, para as fontes em que somos nós que o escolhemos."
+  def new_webhook_secret, do: Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
 
   @doc "Se o projeto está de fato escutando os eventos do repositório."
-  def listening?(%Project{} = project),
-    do: not is_nil(project.repo_id) and not is_nil(project.webhook_id)
+  def listening?(%Project{} = project) do
+    not is_nil(project.repo_id) and connected?(get_webhook(project, "github"))
+  end
+
+  @doc "Se o projeto já registrou algum acontecimento de um tipo."
+  def has_event_kind?(%Project{} = project, kind) when is_binary(kind) do
+    Event
+    |> where(project_id: ^project.id, kind: ^kind)
+    |> Repo.exists?()
+  end
 
   @doc "Desliga o repositório, mantendo o projeto e o XP já conquistado."
   def disconnect_repo(%User{} = user, slug) do
@@ -110,11 +176,6 @@ defmodule CommitCraft.Projects do
   @doc "O projeto da conta que já usa este repositório, se houver."
   def project_with_repo(%User{} = user, repo_id) when is_integer(repo_id) do
     Repo.get_by(Project, user_id: user.id, repo_id: repo_id)
-  end
-
-  @doc "O projeto dono de um webhook, achado pelo identificador que vai na URL."
-  def get_project_by_webhook_token(token) when is_binary(token) do
-    Repo.get_by(Project, webhook_token: token)
   end
 
   @doc "Os últimos acontecimentos de um projeto."

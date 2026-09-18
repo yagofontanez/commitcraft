@@ -12,6 +12,7 @@ defmodule CommitCraft.Game.Rules do
 
   @xp %{
     commit: 5,
+    sale: 20,
     issue_closed: 15,
     deploy: 25,
     pull_request_merged: 40,
@@ -42,7 +43,10 @@ defmodule CommitCraft.Game.Rules do
   que não interessa devolve lista vazia — não é erro: o GitHub manda `ping` ao
   criar o webhook, e manda eventos que o jogo simplesmente ignora.
   """
-  def events_for("push", %{"commits" => commits} = payload) when is_list(commits) do
+  def events_for(source, evento, payload, contexto \\ %{})
+
+  def events_for("github", "push", %{"commits" => commits} = payload, _ctx)
+      when is_list(commits) do
     if na_branch_principal?(payload) do
       commits
       |> Enum.filter(&novo?/1)
@@ -54,7 +58,7 @@ defmodule CommitCraft.Game.Rules do
     end
   end
 
-  def events_for("pull_request", %{"action" => "closed", "pull_request" => pr}) do
+  def events_for("github", "pull_request", %{"action" => "closed", "pull_request" => pr}, _ctx) do
     # "Fechado" e "mesclado" são coisas diferentes: fechar sem mesclar é
     # desistir, e desistir não dá XP.
     if pr["merged"] == true do
@@ -72,7 +76,7 @@ defmodule CommitCraft.Game.Rules do
     end
   end
 
-  def events_for("issues", %{"action" => "closed", "issue" => issue}) do
+  def events_for("github", "issues", %{"action" => "closed", "issue" => issue}, _ctx) do
     [
       %{
         kind: "issue_closed",
@@ -84,7 +88,119 @@ defmodule CommitCraft.Game.Rules do
     ]
   end
 
-  def events_for(_evento, _payload), do: []
+  # ── Vercel ──────────────────────────────────────────────────────────
+  #
+  # Só deploy de produção conta. Preview é rascunho: publicar rascunho não é
+  # colocar nada no mundo.
+
+  def events_for("vercel", tipo, payload, _ctx)
+      when tipo in ["deployment.succeeded", "deployment.ready"] do
+    if producao?(payload) do
+      [
+        %{
+          kind: "deploy",
+          title: titulo(nome_do_deploy(payload), "Deploy em produção"),
+          xp: xp_for(:deploy),
+          occurred_at: momento_ms(payload["createdAt"]),
+          external_id: "deploy-#{id_do_deploy(payload)}"
+        }
+      ]
+    else
+      []
+    end
+  end
+
+  def events_for("vercel", "deployment.error", payload, _ctx) do
+    if producao?(payload) do
+      [
+        %{
+          kind: "broken_build",
+          title: titulo(nome_do_deploy(payload), "Build quebrado em produção"),
+          xp: xp_for(:broken_build),
+          occurred_at: momento_ms(payload["createdAt"]),
+          external_id: "build-quebrado-#{id_do_deploy(payload)}"
+        }
+      ]
+    else
+      []
+    end
+  end
+
+  # ── Stripe ──────────────────────────────────────────────────────────
+  #
+  # A primeira venda vale muito mais que as seguintes de propósito: ela é o
+  # momento em que o projeto deixa de ser exercício. As outras continuam
+  # valendo, só que como rotina.
+
+  def events_for("stripe", tipo, payload, ctx)
+      when tipo in ["checkout.session.completed", "payment_intent.succeeded", "invoice.paid"] do
+    objeto = get_in(payload, ["data", "object"]) || %{}
+    primeira? = Map.get(ctx, :first_sale?, false)
+
+    [
+      %{
+        kind: if(primeira?, do: "first_sale", else: "sale"),
+        title:
+          titulo(
+            valor_em_dinheiro(objeto),
+            if(primeira?, do: "Primeira venda", else: "Venda")
+          ),
+        xp: if(primeira?, do: xp_for(:first_sale), else: xp_for(:sale)),
+        occurred_at: momento_s(payload["created"]),
+        external_id: "stripe-#{objeto["id"] || payload["id"]}"
+      }
+    ]
+  end
+
+  def events_for(_fonte, _evento, _payload, _ctx), do: []
+
+  defp producao?(payload) do
+    get_in(payload, ["payload", "target"]) == "production" or
+      get_in(payload, ["payload", "deployment", "target"]) == "production"
+  end
+
+  defp id_do_deploy(payload) do
+    get_in(payload, ["payload", "deployment", "id"]) ||
+      get_in(payload, ["payload", "id"]) ||
+      payload["id"]
+  end
+
+  defp nome_do_deploy(payload) do
+    get_in(payload, ["payload", "deployment", "name"]) ||
+      get_in(payload, ["payload", "name"])
+  end
+
+  # A Stripe manda o valor em centavos, na moeda da conta.
+  defp valor_em_dinheiro(%{"amount_total" => centavos, "currency" => moeda})
+       when is_integer(centavos) do
+    formatar_dinheiro(centavos, moeda)
+  end
+
+  defp valor_em_dinheiro(%{"amount_received" => centavos, "currency" => moeda})
+       when is_integer(centavos) do
+    formatar_dinheiro(centavos, moeda)
+  end
+
+  defp valor_em_dinheiro(%{"amount_paid" => centavos, "currency" => moeda})
+       when is_integer(centavos) do
+    formatar_dinheiro(centavos, moeda)
+  end
+
+  defp valor_em_dinheiro(_objeto), do: nil
+
+  defp formatar_dinheiro(centavos, moeda) do
+    reais = centavos / 100
+
+    simbolo =
+      case String.downcase(to_string(moeda)) do
+        "brl" -> "R$"
+        "usd" -> "US$"
+        "eur" -> "€"
+        outra -> String.upcase(outra) <> " "
+      end
+
+    "Venda de #{simbolo} #{:erlang.float_to_binary(reais, decimals: 2)}"
+  end
 
   defp na_branch_principal?(payload) do
     principal = get_in(payload, ["repository", "default_branch"])
@@ -129,4 +245,13 @@ defmodule CommitCraft.Game.Rules do
   end
 
   defp momento(_outro), do: DateTime.utc_now(:second)
+
+  # A Vercel manda milissegundos desde a época; a Stripe, segundos.
+  defp momento_ms(ms) when is_integer(ms),
+    do: DateTime.from_unix!(ms, :millisecond) |> DateTime.truncate(:second)
+
+  defp momento_ms(_outro), do: DateTime.utc_now(:second)
+
+  defp momento_s(segundos) when is_integer(segundos), do: DateTime.from_unix!(segundos)
+  defp momento_s(_outro), do: DateTime.utc_now(:second)
 end

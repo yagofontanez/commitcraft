@@ -162,7 +162,8 @@ defmodule CommitCraftWeb.ProjectController do
   # em desenvolvimento, sem túnel —, o repositório continua ligado e a tela diz
   # o que falta, em vez de desfazer tudo e não explicar nada.
   defp instalar_webhook(conn, user, project) do
-    %{token: token, secret: secret} = Projects.new_webhook_credentials()
+    token = Projects.new_webhook_token()
+    secret = Projects.new_webhook_secret()
 
     case webhook_url(token) do
       {:error, :sem_url_publica} ->
@@ -176,7 +177,12 @@ defmodule CommitCraftWeb.ProjectController do
       {:ok, url} ->
         case Api.create_hook(user.github_token, project.repo_full_name, url, secret) do
           {:ok, hook_id} ->
-            {:ok, _project} = Projects.record_webhook(project, hook_id, token, secret)
+            {:ok, _webhook} =
+              Projects.put_webhook(project, "github", %{
+                token: token,
+                secret: secret,
+                external_id: to_string(hook_id)
+              })
 
             put_flash(
               conn,
@@ -197,18 +203,19 @@ defmodule CommitCraftWeb.ProjectController do
     end
   end
 
-  defp remover_webhook(user, %{webhook_id: id, repo_full_name: repo} = project)
-       when is_integer(id) and is_binary(repo) do
+  defp remover_webhook(user, project) do
+    hook = Projects.get_webhook(project, "github")
+
     # Deixar hook órfão no repositório de alguém é sujeira nossa, não dela.
-    case Api.delete_hook(user.github_token, repo, id) do
-      :ok -> :ok
-      {:error, motivo} -> Logger.warning("não deu para remover o webhook: #{inspect(motivo)}")
+    if hook && hook.external_id && project.repo_full_name do
+      case Api.delete_hook(user.github_token, project.repo_full_name, hook.external_id) do
+        :ok -> :ok
+        {:error, motivo} -> Logger.warning("não deu para remover o webhook: #{inspect(motivo)}")
+      end
     end
 
-    Projects.clear_webhook(project)
+    Projects.delete_webhook(project, "github")
   end
-
-  defp remover_webhook(_user, _project), do: :ok
 
   defp explicar(:already_exists),
     do:
@@ -235,6 +242,60 @@ defmodule CommitCraftWeb.ProjectController do
   defp ampliar(conn, slug) do
     redirect(conn, to: ~p"/auth/github/ampliar?voltar=#{~p"/jogar/#{slug}/repositorio"}")
   end
+
+  @doc """
+  Guarda o segredo de assinatura de Vercel ou Stripe.
+
+  Nestas duas o webhook é criado por quem opera, no painel do próprio serviço —
+  não por nós. Assim o CommitCraft não precisa de token de API nenhum dessas
+  contas: recebe a entrega e confere a assinatura, e nada além disso.
+  """
+  def save_integration(conn, %{"slug" => slug, "source" => source} = params) do
+    segredo = params |> Map.get("secret", "") |> to_string() |> String.trim()
+
+    with {:ok, project} <- buscar(conn.assigns.current_user, slug),
+         :ok <- fonte_colavel(source),
+         :ok <- segredo_preenchido(segredo) do
+      {:ok, _webhook} = Projects.put_webhook(project, source, %{secret: segredo})
+
+      conn
+      |> put_flash(:info, "#{nome_da_fonte(source)} conectado.")
+      |> redirect(to: ~p"/jogar/#{slug}")
+    else
+      {:error, :sem_segredo} ->
+        conn
+        |> put_flash(:error, "Cole o segredo de assinatura que o painel mostrou.")
+        |> redirect(to: ~p"/jogar/#{slug}")
+
+      {:error, motivo} ->
+        desviar(conn, motivo, slug)
+    end
+  end
+
+  def remove_integration(conn, %{"slug" => slug, "source" => source}) do
+    with {:ok, project} <- buscar(conn.assigns.current_user, slug),
+         :ok <- fonte_colavel(source) do
+      :ok = Projects.delete_webhook(project, source)
+
+      conn
+      |> put_flash(:info, "#{nome_da_fonte(source)} desconectado. O XP já conquistado fica.")
+      |> redirect(to: ~p"/jogar/#{slug}")
+    else
+      {:error, motivo} -> desviar(conn, motivo, slug)
+    end
+  end
+
+  # O webhook do GitHub é criado por nós, então não entra por aqui: deixar
+  # colar um segredo arbitrário nele quebraria o que já está instalado.
+  defp fonte_colavel(source) when source in ["vercel", "stripe"], do: :ok
+  defp fonte_colavel(_outra), do: {:error, :not_found}
+
+  defp segredo_preenchido(""), do: {:error, :sem_segredo}
+  defp segredo_preenchido(_segredo), do: :ok
+
+  defp nome_da_fonte("vercel"), do: "Vercel"
+  defp nome_da_fonte("stripe"), do: "Stripe"
+  defp nome_da_fonte(outra), do: outra
 
   defp buscar(user, slug) do
     case Projects.get_project(user, slug) do
@@ -301,7 +362,17 @@ defmodule CommitCraftWeb.ProjectController do
     |> assign(:changeset, changeset)
     |> assign(:events, Projects.list_events(project))
     |> assign(:listening?, Projects.listening?(project))
+    |> assign(:webhooks, endereços_prontos(project))
     |> render(:show)
+  end
+
+  # Vercel e Stripe precisam do endereço na mão antes de existir segredo.
+  defp endereços_prontos(project) do
+    if project.repo_full_name do
+      for fonte <- ["vercel", "stripe"], do: Projects.ensure_webhook_token(project, fonte)
+    end
+
+    Projects.webhooks_by_source(project)
   end
 
   defp render_index(conn, changeset) do

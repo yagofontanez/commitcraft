@@ -13,10 +13,11 @@ integração com repositório nem motor de XP. Os números que aparecem na pági
 são ilustrativos e vivem em `lib/commitcraft_web/controllers/page_controller.ex`.
 
 Depois de entrar, `/jogar` lista seus projetos. Dá para criar, renomear, apagar,
-conectar um repositório do GitHub e **ganhar XP de verdade** com o que acontece
-nele: commit na branch principal, pull request mesclado e issue fechada.
+conectar três fontes de XP: **GitHub** (commit na branch principal, pull request
+mesclado, issue fechada), **Vercel** (deploy em produção soma, build quebrado
+custa) e **Stripe** (a primeira venda vale muito, as seguintes viram rotina).
 
-O que ainda não existe: Vercel, Stripe, conquistas e sequência de dias.
+O que ainda não existe: conquistas e sequência de dias.
 
 ## Login
 
@@ -133,10 +134,29 @@ que põe o nível 7 a uns três meses de trabalho. É o mesmo cálculo que desen
 HUD da página inicial, então mexer em `xp_to_advance/1` muda a promessa da
 página junto com o jogo.
 
-## O webhook
+## Os webhooks
 
-O repositório conectado manda eventos para `/webhooks/github/:token`. Três
-cuidados que não são opcionais e explicam o desenho do código:
+As três fontes entregam em `/webhooks/:source/:token`.
+
+**GitHub** é instalado por nós, com o escopo `repo` que a pessoa concede.
+**Vercel e Stripe não pedem token de API nenhum**: quem cria o webhook é quem
+opera, no painel do próprio serviço, e cola aqui só o segredo de assinatura.
+Menos permissão nossa na conta alheia, e um passo a menos para dar errado.
+
+Cada serviço assina de um jeito, e as diferenças não são detalhe:
+
+| | Cabeçalho | Algoritmo | O que é assinado |
+| --- | --- | --- | --- |
+| GitHub | `X-Hub-Signature-256` | HMAC-SHA256 | corpo cru |
+| Vercel | `x-vercel-signature` | HMAC-**SHA1** | corpo cru |
+| Stripe | `Stripe-Signature` | HMAC-SHA256 | `"<carimbo>.<corpo>"` |
+
+No OTP o átomo do SHA-1 é `:sha`; `:sha1` não existe e derruba a requisição
+inteira. A Stripe põe o carimbo dentro do que é assinado, e a tolerância de
+cinco minutos é o que impede uma entrega capturada de ser reenviada meses
+depois.
+
+Três cuidados que não são opcionais e explicam o desenho do código:
 
 - **A assinatura é conferida sobre o corpo cru.** O GitHub assina os bytes que
   mandou; depois que o `Plug.Parsers` vira mapa, reserializar não devolve os
@@ -147,8 +167,10 @@ cuidados que não são opcionais e explicam o desenho do código:
   acontecimento é o SHA do commit ou o número do pull request, não a entrega, e
   um índice único em `(project_id, external_id)` garante. O `xp` do projeto é
   sempre recalculado como a soma dos eventos, nunca incrementado.
-- **O token na URL só roteia.** Quem autentica é a assinatura HMAC, com segredo
-  sorteado por projeto e guardado cifrado.
+- **O token na URL só roteia.** Quem autentica é a assinatura, com segredo por
+  projeto **e por fonte**, guardado cifrado. O token também precisa bater com a
+  fonte da URL: sem isso, um token de GitHub entregue em `/webhooks/stripe`
+  seria conferido com o algoritmo errado.
 
 ### Testando em desenvolvimento
 

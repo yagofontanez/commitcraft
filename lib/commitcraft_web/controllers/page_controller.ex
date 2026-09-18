@@ -2,6 +2,7 @@ defmodule CommitCraftWeb.PageController do
   use CommitCraftWeb, :controller
 
   alias CommitCraft.Game.Level
+  alias CommitCraft.Game.Rules
 
   # O chão do herói: a fita de commits por onde o artesão caminha. Os blocos
   # dourados e de musgo são os eventos raros — venda e deploy — para que a fita
@@ -48,19 +49,25 @@ defmodule CommitCraftWeb.PageController do
     }
   ]
 
-  # A tabela de pontos. É a pergunta que todo dev faz primeiro, então ela
-  # aparece como tabela de verdade, com números de verdade — inclusive o
-  # negativo, que é o que deixa o resto crível.
+  # A tabela de pontos. Os números vêm de CommitCraft.Game.Rules, não escritos
+  # à mão: a promessa da página e o motor do jogo não podem divergir.
   @xp_table [
-    %{event: "Commit na branch principal", source: "GitHub", xp: 5, tone: :plain},
-    %{event: "Issue fechada", source: "GitHub", xp: 15, tone: :plain},
-    %{event: "Deploy em produção", source: "Vercel", xp: 25, tone: :good},
-    %{event: "Pull request aprovado e mesclado", source: "GitHub", xp: 40, tone: :good},
-    %{event: "Sete dias seguidos com commit", source: "CommitCraft", xp: 80, tone: :good},
-    %{event: "Primeiro usuário que não é você", source: "seu app", xp: 100, tone: :great},
-    %{event: "Primeira venda", source: "Stripe", xp: 250, tone: :great},
-    %{event: "Build quebrado em produção", source: "Vercel", xp: -30, tone: :bad}
+    {:commit, "Commit na branch principal", "GitHub", :plain},
+    {:issue_closed, "Issue fechada", "GitHub", :plain},
+    {:sale, "Venda", "Stripe", :plain},
+    {:deploy, "Deploy em produção", "Vercel", :good},
+    {:pull_request_merged, "Pull request aprovado e mesclado", "GitHub", :good},
+    {:streak_week, "Sete dias seguidos com commit", "CommitCraft", :good},
+    {:first_user, "Primeiro usuário que não é você", "seu app", :great},
+    {:first_sale, "Primeira venda", "Stripe", :great},
+    {:broken_build, "Build quebrado em produção", "Vercel", :bad}
   ]
+
+  defp xp_table do
+    Enum.map(@xp_table, fn {chave, evento, fonte, tom} ->
+      %{event: evento, source: fonte, xp: Rules.xp_for(chave), tone: tom}
+    end)
+  end
 
   @achievements [
     %{
@@ -115,7 +122,7 @@ defmodule CommitCraftWeb.PageController do
     |> assign(:pitch, @pitch)
     |> assign(:ground, @ground)
     |> assign(:party, @party)
-    |> assign(:xp_table, @xp_table)
+    |> assign(:xp_table, xp_table())
     |> assign(:achievements, @achievements)
     |> render(:home)
   end

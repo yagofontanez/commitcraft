@@ -120,6 +120,35 @@
     </div>
   </div>
 
+  <%!-- Vercel e Stripe não pedem token de API: quem cria o webhook é você, no
+        painel delas, e o CommitCraft só recebe a entrega e confere a
+        assinatura. Menos permissão nossa na sua conta. --%>
+  <div :if={@project.repo_full_name} class="mt-16">
+    <h2 class="font-pixel text-sm text-gold">Outras fontes de XP</h2>
+
+    <div class="mt-8 grid gap-6 lg:grid-cols-2">
+      <.integration
+        source="vercel"
+        nome="Vercel"
+        sprite={:triangle}
+        descricao="Cada deploy em produção vale XP; build quebrado custa."
+        onde="Vercel → Settings → Webhooks → Create Webhook, marcando os eventos de deployment."
+        webhook={@webhooks["vercel"]}
+        project={@project}
+      />
+
+      <.integration
+        source="stripe"
+        nome="Stripe"
+        sprite={:card}
+        descricao="A primeira venda vale muito; as seguintes viram rotina."
+        onde="Stripe → Developers → Webhooks → Add endpoint, com os eventos de pagamento."
+        webhook={@webhooks["stripe"]}
+        project={@project}
+      />
+    </div>
+  </div>
+
   <div class="mt-16">
     <h2 class="font-pixel text-sm text-gold">Linha do tempo</h2>
 

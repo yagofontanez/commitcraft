@@ -45,6 +45,100 @@ defmodule CommitCraftWeb.Game do
   end
 
   @doc """
+  O cartão de uma integração que se conecta colando um segredo.
+
+  Mostra o endereço que o serviço precisa chamar e recebe o segredo de
+  assinatura. Conectada, o segredo nunca mais aparece na tela — não há motivo
+  para exibi-lo de novo, e exibir é o jeito mais fácil de vazá-lo.
+  """
+  attr :source, :string, required: true
+  attr :nome, :string, required: true
+  attr :sprite, :atom, required: true
+  attr :descricao, :string, required: true
+  attr :onde, :string, required: true
+  attr :webhook, :any, default: nil
+  attr :project, :map, required: true
+
+  def integration(assigns) do
+    assigns = assign(assigns, :conectado, CommitCraft.Projects.connected?(assigns.webhook))
+
+    ~H"""
+    <div class="frame px-6 py-6">
+      <div class="flex items-start gap-4">
+        <div class="frame-thin flex h-12 w-12 shrink-0 items-center justify-center">
+          <CommitCraftWeb.Pixel.sprite name={@sprite} class="h-6 w-6" />
+        </div>
+
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-baseline gap-x-3">
+            <h3 class="font-semibold text-bone">{@nome}</h3>
+            <span :if={@conectado} class="font-pixel text-[10px] text-moss">escutando</span>
+            <span :if={!@conectado} class="font-pixel text-[10px] text-muted">
+              não conectado
+            </span>
+          </div>
+          <p class="mt-2 text-sm leading-relaxed text-muted">{@descricao}</p>
+        </div>
+      </div>
+
+      <div :if={@conectado} class="mt-6 flex items-center justify-between gap-4">
+        <p class="text-xs text-muted">
+          conectado {Calendar.strftime(@webhook.installed_at, "%d/%m/%Y")}
+        </p>
+        <.link
+          href={"/jogar/#{@project.slug}/integracao/#{@source}"}
+          method="delete"
+          class="text-sm text-muted hover:text-ember"
+        >
+          desconectar
+        </.link>
+      </div>
+
+      <div :if={!@conectado} class="mt-6">
+        <p class="text-xs leading-relaxed text-muted">{@onde}</p>
+
+        <.form
+          for={%{}}
+          action={"/jogar/#{@project.slug}/integracao/#{@source}"}
+          method="put"
+          class="mt-4"
+        >
+          <label class="block text-xs text-muted" for={"segredo-#{@source}"}>
+            Endereço para colar lá
+          </label>
+          <code class="mt-2 block truncate bg-ink px-4 py-3 text-xs text-bone">
+            {webhook_url(@webhook, @source)}
+          </code>
+
+          <input
+            id={"segredo-#{@source}"}
+            type="text"
+            name="secret"
+            required
+            placeholder="Segredo de assinatura"
+            aria-label={"Segredo de assinatura do #{@nome}"}
+            class="mt-3 w-full border-0 bg-ink px-4 py-3 text-bone placeholder:text-muted/60 focus:outline-none"
+          />
+
+          <button type="submit" class="btn-ghost-craft mt-4 w-full justify-center">
+            Conectar {@nome}
+          </button>
+        </.form>
+      </div>
+    </div>
+    """
+  end
+
+  @doc "O endereço que o serviço externo deve chamar."
+  def webhook_url(webhook, source) do
+    base =
+      Application.get_env(:commitcraft, :webhook_base_url) ||
+        CommitCraftWeb.Endpoint.url()
+
+    String.trim_trailing(base, "/") <> "/webhooks/" <> source <> "/" <> webhook.token
+  end
+
+  @doc """
   Número com ponto de milhar, do jeito que se lê em português.
 
       iex> CommitCraftWeb.Game.numero(1240)

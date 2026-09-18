@@ -26,7 +26,7 @@ defmodule CommitCraftWeb.Router do
   scope "/webhooks", CommitCraftWeb do
     pipe_through :webhook
 
-    post "/github/:token", WebhookController, :github
+    post "/:source/:token", WebhookController, :receive
   end
 
   scope "/", CommitCraftWeb do
@@ -51,6 +51,8 @@ defmodule CommitCraftWeb.Router do
     post "/jogar/:slug/repositorio", ProjectController, :connect_repo
     delete "/jogar/:slug/repositorio", ProjectController, :disconnect_repo
     post "/jogar/:slug/webhook", ProjectController, :install_webhook
+    put "/jogar/:slug/integracao/:source", ProjectController, :save_integration
+    delete "/jogar/:slug/integracao/:source", ProjectController, :remove_integration
     put "/jogar/:slug", ProjectController, :update
     delete "/jogar/:slug", ProjectController, :delete
   end
