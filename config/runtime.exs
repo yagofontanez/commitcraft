@@ -119,6 +119,13 @@ if config_env() == :prod do
 end
 
 if config_env() == :prod do
+  config :commitcraft,
+         :webhook_base_url,
+         System.get_env("WEBHOOK_BASE_URL") ||
+           raise(
+             "falta a variável WEBHOOK_BASE_URL: sem ela o GitHub não sabe para onde entregar"
+           )
+
   config :commitcraft, CommitCraft.GitHub.OAuth,
     client_id:
       System.get_env("GITHUB_CLIENT_ID") ||

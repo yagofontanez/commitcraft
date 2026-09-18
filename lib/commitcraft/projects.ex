@@ -9,6 +9,7 @@ defmodule CommitCraft.Projects do
   import Ecto.Query, warn: false
 
   alias CommitCraft.Accounts.User
+  alias CommitCraft.Projects.Event
   alias CommitCraft.Projects.Project
   alias CommitCraft.Repo
 
@@ -57,6 +58,47 @@ defmodule CommitCraft.Projects do
        else: changeset
   end
 
+  @doc """
+  Guarda os dados do webhook recém-criado no GitHub.
+
+  O segredo é sorteado aqui, por projeto: se um vazar, o estrago fica num
+  repositório só.
+  """
+  def record_webhook(%Project{} = project, hook_id, token, secret) do
+    project
+    |> Ecto.Changeset.change(
+      webhook_id: hook_id,
+      webhook_token: token,
+      webhook_secret: secret,
+      webhook_installed_at: DateTime.utc_now(:second)
+    )
+    |> Repo.update()
+  end
+
+  @doc "Esquece o webhook, sem tocar no repositório nem no XP."
+  def clear_webhook(%Project{} = project) do
+    project
+    |> Ecto.Changeset.change(
+      webhook_id: nil,
+      webhook_token: nil,
+      webhook_secret: nil,
+      webhook_installed_at: nil
+    )
+    |> Repo.update()
+  end
+
+  @doc "Credenciais novas para um webhook: o que vai na URL e o que assina."
+  def new_webhook_credentials do
+    %{
+      token: Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false),
+      secret: Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
+    }
+  end
+
+  @doc "Se o projeto está de fato escutando os eventos do repositório."
+  def listening?(%Project{} = project),
+    do: not is_nil(project.repo_id) and not is_nil(project.webhook_id)
+
   @doc "Desliga o repositório, mantendo o projeto e o XP já conquistado."
   def disconnect_repo(%User{} = user, slug) do
     case get_project(user, slug) do
@@ -68,6 +110,66 @@ defmodule CommitCraft.Projects do
   @doc "O projeto da conta que já usa este repositório, se houver."
   def project_with_repo(%User{} = user, repo_id) when is_integer(repo_id) do
     Repo.get_by(Project, user_id: user.id, repo_id: repo_id)
+  end
+
+  @doc "O projeto dono de um webhook, achado pelo identificador que vai na URL."
+  def get_project_by_webhook_token(token) when is_binary(token) do
+    Repo.get_by(Project, webhook_token: token)
+  end
+
+  @doc "Os últimos acontecimentos de um projeto."
+  def list_events(%Project{} = project, opts \\ []) do
+    limite = Keyword.get(opts, :limit, 30)
+
+    Event
+    |> where(project_id: ^project.id)
+    |> order_by(desc: :occurred_at, desc: :id)
+    |> limit(^limite)
+    |> Repo.all()
+  end
+
+  @doc """
+  Registra o que aconteceu e acerta o XP do projeto.
+
+  Um acontecimento já registrado é ignorado em silêncio: o GitHub reenvia
+  entregas, e o mesmo commit não pode pagar duas vezes. Quem garante isso é o
+  índice único em `(project_id, external_id)` — não uma consulta antes de
+  gravar, que perderia a corrida com uma segunda entrega chegando junto.
+
+  Devolve `{:ok, %{project: project, events: recem_registrados}}`.
+  """
+  def record_events(%Project{} = project, acontecimentos) when is_list(acontecimentos) do
+    Repo.transaction(fn ->
+      registrados = Enum.flat_map(acontecimentos, &registrar(project, &1))
+
+      %{project: recalcular_xp(project), events: registrados}
+    end)
+  end
+
+  defp registrar(project, attrs) do
+    %Event{project_id: project.id}
+    |> Event.changeset(attrs)
+    |> Repo.insert(on_conflict: :nothing)
+    |> case do
+      # Sem id significa que o índice único barrou: já estava registrado.
+      {:ok, %Event{id: nil}} -> []
+      {:ok, event} -> [event]
+      {:error, _changeset} -> []
+    end
+  end
+
+  # O XP é sempre a soma do que está registrado, nunca um contador incrementado.
+  # Assim uma entrega repetida, ou um evento apagado, não deixam o total mentindo.
+  defp recalcular_xp(project) do
+    total =
+      Event
+      |> where(project_id: ^project.id)
+      |> select([e], coalesce(sum(e.xp), 0))
+      |> Repo.one()
+
+    project
+    |> Ecto.Changeset.change(xp: total)
+    |> Repo.update!()
   end
 
   @doc """

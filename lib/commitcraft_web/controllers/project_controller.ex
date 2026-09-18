@@ -4,6 +4,8 @@ defmodule CommitCraftWeb.ProjectController do
   """
   use CommitCraftWeb, :controller
 
+  require Logger
+
   alias CommitCraft.Accounts
   alias CommitCraft.Game.Level
   alias CommitCraft.GitHub.Api
@@ -109,7 +111,7 @@ defmodule CommitCraftWeb.ProjectController do
          {:ok, repo} <- Api.get_repo(user.github_token, id),
          {:ok, project} <- Projects.connect_repo(user, slug, repo) do
       conn
-      |> put_flash(:info, "#{project.repo_full_name} conectado.")
+      |> instalar_webhook(user, project)
       |> redirect(to: ~p"/jogar/#{project.slug}")
     else
       {:redirect, :ampliar, slug} -> ampliar(conn, slug)
@@ -117,15 +119,116 @@ defmodule CommitCraftWeb.ProjectController do
     end
   end
 
-  def disconnect_repo(conn, %{"slug" => slug}) do
-    case Projects.disconnect_repo(conn.assigns.current_user, slug) do
+  @doc "Tenta instalar o webhook de novo, para quando a primeira vez falhou."
+  def install_webhook(conn, %{"slug" => slug}) do
+    user = conn.assigns.current_user
+
+    case buscar(user, slug) do
+      {:ok, %{repo_id: nil}} ->
+        desviar(conn, :not_found, slug)
+
       {:ok, project} ->
         conn
-        |> put_flash(:info, "Repositório desconectado. O XP já conquistado fica.")
-        |> redirect(to: ~p"/jogar/#{project.slug}")
+        |> instalar_webhook(user, project)
+        |> redirect(to: ~p"/jogar/#{slug}")
 
       {:error, motivo} ->
         desviar(conn, motivo, slug)
+    end
+  end
+
+  def disconnect_repo(conn, %{"slug" => slug}) do
+    user = conn.assigns.current_user
+
+    with {:ok, project} <- buscar(user, slug) do
+      remover_webhook(user, project)
+
+      case Projects.disconnect_repo(user, slug) do
+        {:ok, project} ->
+          conn
+          |> put_flash(:info, "Repositório desconectado. O XP já conquistado fica.")
+          |> redirect(to: ~p"/jogar/#{project.slug}")
+
+        {:error, motivo} ->
+          desviar(conn, motivo, slug)
+      end
+    else
+      {:error, motivo} -> desviar(conn, motivo, slug)
+    end
+  end
+
+  # Conectar o repositório e instalar o webhook são coisas separadas de
+  # propósito: se o GitHub não conseguir alcançar este servidor — o caso normal
+  # em desenvolvimento, sem túnel —, o repositório continua ligado e a tela diz
+  # o que falta, em vez de desfazer tudo e não explicar nada.
+  defp instalar_webhook(conn, user, project) do
+    %{token: token, secret: secret} = Projects.new_webhook_credentials()
+
+    case webhook_url(token) do
+      {:error, :sem_url_publica} ->
+        put_flash(
+          conn,
+          :error,
+          "#{project.repo_full_name} conectado, mas o webhook não foi instalado: " <>
+            "este servidor não tem endereço público. Suba um túnel e defina WEBHOOK_BASE_URL."
+        )
+
+      {:ok, url} ->
+        case Api.create_hook(user.github_token, project.repo_full_name, url, secret) do
+          {:ok, hook_id} ->
+            {:ok, _project} = Projects.record_webhook(project, hook_id, token, secret)
+
+            put_flash(
+              conn,
+              :info,
+              "#{project.repo_full_name} conectado. A partir do próximo commit a barra começa a andar."
+            )
+
+          {:error, motivo} ->
+            Logger.warning("não deu para criar o webhook: #{inspect(motivo)}")
+
+            put_flash(
+              conn,
+              :error,
+              "#{project.repo_full_name} conectado, mas não deu para instalar o webhook. " <>
+                explicar(motivo)
+            )
+        end
+    end
+  end
+
+  defp remover_webhook(user, %{webhook_id: id, repo_full_name: repo} = project)
+       when is_integer(id) and is_binary(repo) do
+    # Deixar hook órfão no repositório de alguém é sujeira nossa, não dela.
+    case Api.delete_hook(user.github_token, repo, id) do
+      :ok -> :ok
+      {:error, motivo} -> Logger.warning("não deu para remover o webhook: #{inspect(motivo)}")
+    end
+
+    Projects.clear_webhook(project)
+  end
+
+  defp remover_webhook(_user, _project), do: :ok
+
+  defp explicar(:already_exists),
+    do:
+      "Já existe um webhook com este endereço no repositório — apague-o no GitHub e tente de novo."
+
+  defp explicar(:unauthorized),
+    do: "O GitHub recusou a autorização. Autorize de novo e tente."
+
+  defp explicar(:not_found),
+    do: "O GitHub não encontrou esse repositório."
+
+  defp explicar(_outro), do: "Tente de novo em instantes."
+
+  defp webhook_url(token) do
+    case Application.get_env(:commitcraft, :webhook_base_url) do
+      base when is_binary(base) and base != "" ->
+        {:ok, String.trim_trailing(base, "/") <> "/webhooks/github/" <> token}
+
+      _sem_base ->
+        {:error, :sem_url_publica}
     end
   end
 
@@ -196,6 +299,8 @@ defmodule CommitCraftWeb.ProjectController do
     |> assign(:project, project)
     |> assign(:progress, Level.progress(project.xp))
     |> assign(:changeset, changeset)
+    |> assign(:events, Projects.list_events(project))
+    |> assign(:listening?, Projects.listening?(project))
     |> render(:show)
   end
 

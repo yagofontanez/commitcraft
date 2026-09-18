@@ -77,12 +77,13 @@
   <div :if={@project.repo_full_name} class="frame px-7 py-6">
     <div class="flex flex-wrap items-center justify-between gap-5">
       <div class="flex min-w-0 items-center gap-4">
-        <.sprite name={:commits} class="h-8 w-8 shrink-0" />
+        <.sprite name={:commits} class="h-10 w-10 shrink-0" />
         <div class="min-w-0">
           <p class="truncate font-semibold text-bone">{@project.repo_full_name}</p>
           <p class="mt-1 text-xs text-muted">
-            <span :if={@project.repo_private}>repositório privado · </span>
-            conectado {Calendar.strftime(@project.repo_connected_at, "%d/%m/%Y")}
+            <span :if={@project.repo_private}>privado · </span>
+            <span :if={@listening?} class="text-moss">escutando</span>
+            <span :if={!@listening?} class="text-ember">webhook não instalado</span>
           </p>
         </div>
       </div>
@@ -104,12 +105,55 @@
       </div>
     </div>
 
-    <p class="mt-6 text-sm leading-relaxed text-muted">
-      O repositório está ligado, mas o CommitCraft ainda não escuta os eventos
-      dele — o webhook é o próximo pedaço a ser construído. Até lá a barra fica
-      parada.
-    </p>
+    <%!-- Sem webhook o repositório está ligado mas mudo. A tela diz o que falta
+          e deixa tentar de novo, em vez de só mostrar que algo deu errado. --%>
+    <div :if={!@listening?} class="mt-6 border-t-[3px] border-stone/50 pt-6">
+      <p class="text-sm leading-relaxed text-muted">
+        O repositório está ligado, mas o GitHub ainda não tem para onde entregar
+        os eventos — em desenvolvimento isso quer dizer que falta um túnel
+        apontando para este servidor.
+      </p>
+
+      <.form for={%{}} action={~p"/jogar/#{@project.slug}/webhook"} class="mt-5">
+        <button type="submit" class="btn-ghost-craft">Instalar webhook</button>
+      </.form>
+    </div>
   </div>
+
+  <div class="mt-16">
+    <h2 class="font-pixel text-sm text-gold">Linha do tempo</h2>
+
+    <div
+      :if={@events == []}
+      class="frame mt-8 flex flex-col items-center gap-5 px-8 py-16 text-center"
+    >
+      <.sprite name={:commits} class="h-10 w-10" recolor={%{"n" => "#6b5c99", "l" => "#4a3f75"}} />
+      <p class="font-pixel text-[13px] leading-relaxed text-muted">Nada aconteceu ainda</p>
+      <p class="max-w-md text-sm leading-relaxed text-muted">
+        {if @listening?,
+          do: "Faça um commit na branch principal e ele aparece aqui.",
+          else:
+            "Conecte um repositório e cada commit, pull request e issue fechada passa a cair aqui."}
+      </p>
+    </div>
+
+    <ul :if={@events != []} class="mt-8 space-y-px">
+      <li
+        :for={event <- @events}
+        class="flex flex-wrap items-baseline gap-x-5 gap-y-1 bg-panel/60 px-6 py-4"
+      >
+        <span class={["shrink-0 font-pixel text-[11px]", event_tone(event.xp)]}>
+          {if event.xp > 0, do: "+#{event.xp}", else: event.xp}
+        </span>
+        <span class="min-w-0 flex-1 truncate text-sm text-bone">{event.title}</span>
+        <span class="shrink-0 text-xs text-muted">{event_label(event.kind)}</span>
+        <span class="shrink-0 font-pixel text-[10px] text-muted">
+          {Calendar.strftime(event.occurred_at, "%d/%m %H:%M")}
+        </span>
+      </li>
+    </ul>
+  </div>
+
   <%!-- Apagar fica atrás de um <details>: um clique abre, outro confirma. Sem
         JS, sem diálogo nativo do navegador, e o texto diz em números o que está
         sendo jogado fora — hoje é pouco, daqui a uns meses não vai ser. --%>

@@ -22,6 +22,8 @@ defmodule CommitCraft.GitHubStub do
     token = Keyword.get(opts, :token, @token)
     repos = Keyword.get(opts, :repos, [repo()])
     status = Keyword.get(opts, :status)
+    hook_status = Keyword.get(opts, :hook_status)
+    hook_id = Keyword.get(opts, :hook_id, 555)
 
     Req.Test.stub(CommitCraft.GitHub, fn conn ->
       cond do
@@ -30,6 +32,14 @@ defmodule CommitCraft.GitHubStub do
 
         conn.request_path == "/user" ->
           Req.Test.json(conn, perfil)
+
+        # Criar e remover webhook: `/repos/dono/nome/hooks[/id]`
+        String.contains?(conn.request_path, "/hooks") ->
+          cond do
+            hook_status -> conn |> put_status(hook_status) |> Req.Test.json(%{"message" => "no"})
+            conn.method == "DELETE" -> conn |> put_status(204) |> Req.Test.json(%{})
+            true -> conn |> put_status(201) |> Req.Test.json(%{"id" => hook_id})
+          end
 
         status ->
           conn |> put_status(status) |> Req.Test.json(%{"message" => "erro de teste"})
@@ -44,6 +54,9 @@ defmodule CommitCraft.GitHubStub do
             nil -> conn |> put_status(404) |> Req.Test.json(%{"message" => "Not Found"})
             achado -> Req.Test.json(conn, achado)
           end
+
+        true ->
+          conn |> put_status(404) |> Req.Test.json(%{"message" => "rota não ensinada ao stub"})
       end
     end)
   end

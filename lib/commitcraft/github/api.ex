@@ -63,17 +63,106 @@ defmodule CommitCraft.GitHub.Api do
     }
   end
 
+  @doc """
+  Cria o webhook no repositório.
+
+  Os eventos pedidos são só os que o jogo pontua. Pedir tudo encheria o
+  servidor de entregas para jogar fora.
+  """
+  def create_hook(token, repo_full_name, url, secret) do
+    corpo = %{
+      name: "web",
+      active: true,
+      events: ["push", "pull_request", "issues"],
+      config: %{
+        url: url,
+        content_type: "json",
+        secret: secret,
+        insecure_ssl: "0"
+      }
+    }
+
+    case post(token, "/repos/#{repo_full_name}/hooks", corpo) do
+      {:ok, %{"id" => id}} -> {:ok, id}
+      {:ok, outro} -> {:error, {:unexpected_body, outro}}
+      {:error, motivo} -> {:error, motivo}
+    end
+  end
+
+  @doc """
+  Remove o webhook do repositório.
+
+  Um hook que já não existe conta como removido: o objetivo é "não sobra hook
+  nosso lá", e alguém que apagou pelo GitHub já chegou nesse objetivo.
+  """
+  def delete_hook(token, repo_full_name, hook_id) do
+    case delete(token, "/repos/#{repo_full_name}/hooks/#{hook_id}") do
+      :ok -> :ok
+      {:error, :not_found} -> :ok
+      {:error, motivo} -> {:error, motivo}
+    end
+  end
+
+  defp post(token, caminho, corpo) do
+    request =
+      request(
+        url: @base <> caminho,
+        method: :post,
+        json: corpo,
+        headers: cabecalhos(token)
+      )
+
+    case Req.request(request) do
+      {:ok, %{status: status, body: body}} when status in [200, 201] ->
+        {:ok, body}
+
+      {:ok, %{status: status}} when status in [401, 403] ->
+        {:error, :unauthorized}
+
+      {:ok, %{status: 404}} ->
+        {:error, :not_found}
+
+      # O GitHub responde 422 quando já existe um hook com a mesma URL.
+      {:ok, %{status: 422, body: body}} ->
+        Logger.warning("GitHub recusou o webhook: #{inspect(body)}")
+        {:error, :already_exists}
+
+      {:ok, %{status: status}} ->
+        Logger.warning("GitHub respondeu #{status} em #{caminho}")
+        {:error, {:unexpected_status, status}}
+
+      {:error, motivo} ->
+        {:error, {:transport, motivo}}
+    end
+  end
+
+  defp delete(token, caminho) do
+    request = request(url: @base <> caminho, method: :delete, headers: cabecalhos(token))
+
+    case Req.request(request) do
+      {:ok, %{status: status}} when status in [204, 200] -> :ok
+      {:ok, %{status: 404}} -> {:error, :not_found}
+      {:ok, %{status: status}} when status in [401, 403] -> {:error, :unauthorized}
+      {:ok, %{status: status}} -> {:error, {:unexpected_status, status}}
+      {:error, motivo} -> {:error, {:transport, motivo}}
+    end
+  end
+
+  defp cabecalhos(token) do
+    [
+      {"accept", "application/vnd.github+json"},
+      {"authorization", "Bearer " <> token},
+      {"x-github-api-version", "2022-11-28"}
+    ]
+  end
+
   defp get(token, caminho, params) do
     request =
       request(
         url: @base <> caminho,
         method: :get,
         params: params,
-        headers: [
-          {"accept", "application/vnd.github+json"},
-          {"authorization", "Bearer " <> token},
-          {"x-github-api-version", "2022-11-28"}
-        ]
+        headers: cabecalhos(token)
       )
 
     case Req.request(request) do

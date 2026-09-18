@@ -87,3 +87,13 @@ config :commitcraft, CommitCraft.GitHub.OAuth,
 if File.exists?(Path.expand("dev.secret.exs", __DIR__)) do
   import_config "dev.secret.exs"
 end
+
+# O GitHub não alcança localhost. Para receber webhook em desenvolvimento,
+# suba um túnel e aponte esta variável para ele:
+#
+#     ngrok http 4000
+#     export WEBHOOK_BASE_URL=https://algo.ngrok-free.app
+#
+# Sem isso o repositório conecta, mas o webhook não é instalado — e a tela diz
+# exatamente isso, em vez de falhar em silêncio.
+config :commitcraft, :webhook_base_url, System.get_env("WEBHOOK_BASE_URL")

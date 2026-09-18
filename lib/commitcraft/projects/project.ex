@@ -23,6 +23,13 @@ defmodule CommitCraft.Projects.Project do
     field :repo_private, :boolean
     field :repo_connected_at, :utc_datetime
 
+    field :webhook_id, :integer
+    field :webhook_token, :string
+    field :webhook_secret, CommitCraft.EncryptedBinary, redact: true
+    field :webhook_installed_at, :utc_datetime
+
+    has_many :events, CommitCraft.Projects.Event
+
     belongs_to :user, User
 
     timestamps(type: :utc_datetime)

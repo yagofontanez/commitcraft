@@ -17,6 +17,18 @@ defmodule CommitCraftWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # O GitHub não tem sessão nem token de CSRF; quem autentica a entrega é a
+  # assinatura HMAC conferida no controller.
+  pipeline :webhook do
+    plug :accepts, ["json"]
+  end
+
+  scope "/webhooks", CommitCraftWeb do
+    pipe_through :webhook
+
+    post "/github/:token", WebhookController, :github
+  end
+
   scope "/", CommitCraftWeb do
     pipe_through :browser
 
@@ -38,6 +50,7 @@ defmodule CommitCraftWeb.Router do
     get "/jogar/:slug/repositorio", ProjectController, :choose_repo
     post "/jogar/:slug/repositorio", ProjectController, :connect_repo
     delete "/jogar/:slug/repositorio", ProjectController, :disconnect_repo
+    post "/jogar/:slug/webhook", ProjectController, :install_webhook
     put "/jogar/:slug", ProjectController, :update
     delete "/jogar/:slug", ProjectController, :delete
   end

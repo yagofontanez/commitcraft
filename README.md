@@ -12,12 +12,11 @@ Landing page e login com GitHub. O jogo em si ainda não existe: não há projet
 integração com repositório nem motor de XP. Os números que aparecem na página
 são ilustrativos e vivem em `lib/commitcraft_web/controllers/page_controller.ex`.
 
-Depois de entrar, `/jogar` lista seus projetos. Dá para criar, renomear, apagar
-e **conectar um repositório do GitHub** a cada um.
+Depois de entrar, `/jogar` lista seus projetos. Dá para criar, renomear, apagar,
+conectar um repositório do GitHub e **ganhar XP de verdade** com o que acontece
+nele: commit na branch principal, pull request mesclado e issue fechada.
 
-O que ainda não existe é o webhook: o repositório fica ligado, mas nenhum evento
-dele chega aqui, então nada alimenta o XP. Todo projeto continua no nível 1 com
-a barra zerada, e as telas dizem isso em vez de fingir.
+O que ainda não existe: Vercel, Stripe, conquistas e sequência de dias.
 
 ## Login
 
@@ -133,6 +132,35 @@ pela tabela de XP da landing page: uma semana ativa dá algo perto de 425 XP, o
 que põe o nível 7 a uns três meses de trabalho. É o mesmo cálculo que desenha o
 HUD da página inicial, então mexer em `xp_to_advance/1` muda a promessa da
 página junto com o jogo.
+
+## O webhook
+
+O repositório conectado manda eventos para `/webhooks/github/:token`. Três
+cuidados que não são opcionais e explicam o desenho do código:
+
+- **A assinatura é conferida sobre o corpo cru.** O GitHub assina os bytes que
+  mandou; depois que o `Plug.Parsers` vira mapa, reserializar não devolve os
+  mesmos bytes e a assinatura nunca confere. Por isso existe
+  `CommitCraftWeb.CacheBodyReader`, que guarda o original — só nas rotas de
+  webhook.
+- **Reenvio não paga duas vezes.** O GitHub reenvia entregas. A identidade de um
+  acontecimento é o SHA do commit ou o número do pull request, não a entrega, e
+  um índice único em `(project_id, external_id)` garante. O `xp` do projeto é
+  sempre recalculado como a soma dos eventos, nunca incrementado.
+- **O token na URL só roteia.** Quem autentica é a assinatura HMAC, com segredo
+  sorteado por projeto e guardado cifrado.
+
+### Testando em desenvolvimento
+
+O GitHub não alcança `localhost`. Suba um túnel e aponte o servidor para ele:
+
+```sh
+ngrok http 4000
+WEBHOOK_BASE_URL=https://algo.ngrok-free.app mix phx.server
+```
+
+Sem `WEBHOOK_BASE_URL` o repositório conecta mas o webhook não é instalado — e a
+tela do projeto diz exatamente isso, com um botão para tentar de novo.
 
 ## Testes
 
