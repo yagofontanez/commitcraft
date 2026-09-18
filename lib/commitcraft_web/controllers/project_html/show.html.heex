@@ -1,0 +1,40 @@
+<.flashes flash={@flash} />
+<.site_header current_user={@current_user} width="full" />
+
+<main class="px-6 py-16 md:px-10 md:py-20">
+  <.link navigate={~p"/jogar"} class="text-sm text-muted hover:text-bone">
+    &larr; Seus projetos
+  </.link>
+
+  <%!-- Nome escrito pela pessoa vai na fonte de leitura, não na pixelada: o
+        Silkscreen mastiga cedilha e til, e "Ração" fica ilegível. A fonte de
+        pixel fica para o chrome do jogo, que é texto nosso e sem acento. --%>
+  <h1 class="mt-6 text-3xl font-semibold tracking-tight text-bone md:text-4xl">
+    {@project.name}
+  </h1>
+
+  <div class="mt-10 max-w-md">
+    <.hud progress={@progress}>
+      <:caption>
+        projeto <span class="text-bone">{@project.slug}</span>
+        <span :if={@project.repo_full_name}>· {@project.repo_full_name}</span>
+      </:caption>
+    </.hud>
+  </div>
+
+  <div class="hairline my-12"></div>
+
+  <%!-- Enquanto nada alimenta o XP, a tela diz isso em vez de fingir uma
+        linha do tempo vazia que parece defeito. --%>
+  <div class="frame flex flex-col items-center gap-5 px-8 py-20 text-center">
+    <.sprite name={:commits} class="h-12 w-12" recolor={%{"n" => "#6b5c99", "l" => "#4a3f75"}} />
+    <p class="font-pixel text-[13px] leading-relaxed text-muted">Nada aconteceu ainda</p>
+    <p class="max-w-md text-sm leading-relaxed text-muted">
+      Este projeto está no nível {@progress.level} com {numero(@progress.xp)} de XP,
+      porque ainda não há repositório conectado. Quando houver, cada commit, pull
+      request e deploy vai cair aqui e mexer nessa barra.
+    </p>
+  </div>
+</main>
+
+<.site_footer width="full" />

@@ -21,20 +21,14 @@
   </div>
 
   <div class="relative mx-auto max-w-4xl px-6 pt-12 pb-16 text-center md:pt-16 md:pb-20">
+    <%!-- Os números saem da curva de verdade, não escritos à mão: se o ritmo do
+          jogo mudar, a promessa da página muda junto. --%>
     <div class="mx-auto mb-12 w-full max-w-sm">
-      <div class="frame px-5 py-4">
-        <div class="mb-3 flex items-baseline justify-between">
-          <span class="font-pixel text-sm text-gold">LV 07</span>
-          <span class="font-pixel text-[10px] text-muted">1.240 / 2.000 XP</span>
-        </div>
-        <div class="xp-track">
-          <div class="xp-fill" style="width: 62%"></div>
-          <div class="xp-notches"></div>
-        </div>
-        <p class="mt-3 text-left text-xs text-muted">
+      <.hud progress={@demo_progress}>
+        <:caption>
           projeto <span class="text-bone">commitcraft</span> · 11 dias de sequência
-        </p>
-      </div>
+        </:caption>
+      </.hud>
     </div>
 
     <h1 class="font-pixel text-[clamp(2.25rem,9vw,5.5rem)] leading-[1.1] text-bone pixel-shadow">

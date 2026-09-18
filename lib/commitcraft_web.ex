@@ -90,6 +90,8 @@ defmodule CommitCraftWeb do
       import CommitCraftWeb.Pixel
       # Cabeçalho, rodapé e mensagens
       import CommitCraftWeb.Site
+      # Barra de XP e afins
+      import CommitCraftWeb.Game
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

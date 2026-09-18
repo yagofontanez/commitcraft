@@ -1,0 +1,92 @@
+<.flashes flash={@flash} />
+<.site_header current_user={@current_user} width="full" />
+
+<main class="px-6 py-16 md:px-10 md:py-20">
+  <div class="flex items-center gap-5">
+    <img
+      :if={@current_user.avatar_url}
+      src={@current_user.avatar_url}
+      alt=""
+      width="64"
+      height="64"
+      class="h-16 w-16 shrink-0 border-[3px] border-stone"
+    />
+    <div class="min-w-0">
+      <h1 class="font-pixel text-lg leading-snug text-bone md:text-xl">
+        {CommitCraft.Accounts.User.display_name(@current_user)}
+      </h1>
+      <p class="mt-2 text-sm text-muted">@{@current_user.github_login}</p>
+    </div>
+  </div>
+
+  <div class="hairline my-12"></div>
+
+  <div class="flex flex-wrap items-end justify-between gap-6">
+    <h2 class="font-pixel text-sm text-gold">Seus projetos</h2>
+
+    <.form
+      :let={f}
+      for={@changeset}
+      action={~p"/jogar"}
+      class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row"
+    >
+      <div class="min-w-0 sm:w-72">
+        <input
+          type="text"
+          name={f[:name].name}
+          value={Phoenix.HTML.Form.normalize_value("text", f[:name].value)}
+          required
+          maxlength="60"
+          placeholder="Nome do projeto"
+          aria-label="Nome do projeto"
+          class="w-full border-0 bg-ink px-4 py-3.5 text-bone placeholder:text-muted/60 focus:outline-none"
+        />
+        <p :for={{mensagem, _} <- f[:name].errors} class="mt-2 text-xs text-ember">
+          O nome {mensagem}.
+        </p>
+      </div>
+      <button type="submit" class="btn-craft justify-center">Começar</button>
+    </.form>
+  </div>
+
+  <%!-- A vaga vazia mostra a forma do que vem, em vez de esconder que ainda
+        não tem nada. --%>
+  <div
+    :if={@projects == []}
+    class="frame mt-10 flex flex-col items-center gap-5 px-8 py-20 text-center"
+  >
+    <.sprite name={:commits} class="h-12 w-12" recolor={%{"n" => "#6b5c99", "l" => "#4a3f75"}} />
+    <p class="font-pixel text-[13px] leading-relaxed text-muted">Vaga vazia</p>
+    <p class="max-w-sm text-sm leading-relaxed text-muted">
+      Dê um nome ao que você está construindo. Todo projeto começa no nível 1,
+      com a barra zerada — como tem que ser.
+    </p>
+  </div>
+
+  <ul :if={@projects != []} class="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+    <li :for={%{project: project, progress: progress} <- @projects}>
+      <.link navigate={~p"/jogar/#{project.slug}"} class="group block">
+        <div class="frame px-6 py-6">
+          <div class="flex items-baseline justify-between gap-4">
+            <h3 class="min-w-0 truncate text-lg font-semibold text-bone group-hover:text-gold">
+              {project.name}
+            </h3>
+            <span class="shrink-0 font-pixel text-[11px] text-gold">LV {padded(progress.level)}</span>
+          </div>
+
+          <div class="mt-5 xp-track">
+            <div class="xp-fill" style={"width: #{round(progress.ratio * 100)}%"}></div>
+            <div class="xp-notches"></div>
+          </div>
+
+          <p class="mt-4 text-xs text-muted">
+            {numero(progress.into_level)} / {numero(progress.to_advance)} XP
+            <span :if={is_nil(project.repo_full_name)}>· sem repositório conectado</span>
+          </p>
+        </div>
+      </.link>
+    </li>
+  </ul>
+</main>
+
+<.site_footer width="full" />

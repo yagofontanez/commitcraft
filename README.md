@@ -12,8 +12,9 @@ Landing page e login com GitHub. O jogo em si ainda não existe: não há projet
 integração com repositório nem motor de XP. Os números que aparecem na página
 são ilustrativos e vivem em `lib/commitcraft_web/controllers/page_controller.ex`.
 
-Depois de entrar, `/jogar` mostra uma vaga de save vazia — é ali que os projetos
-vão aparecer.
+Depois de entrar, `/jogar` lista seus projetos. Dá para criar projetos e ver o
+nível e a barra de XP de cada um — mas nada ainda alimenta esse XP, porque
+repositório não está conectado. Todo projeto nasce no nível 1 com a barra zerada.
 
 ## Login
 
@@ -109,6 +110,19 @@ Decisões que valem saber antes de mexer:
   máquina de escrever só o reescreve; sem JS, ou com "reduzir movimento"
   ligado, a frase aparece inteira.
 
+## A curva de níveis
+
+Nível não é guardado no banco: é função do XP total, calculada por
+`CommitCraft.Game.Level`. Guardar os dois convida os dois a discordarem, e aí
+não dá para saber qual está certo.
+
+Para sair do nível `L` são precisos `300 * L - 100` de XP — o custo cresce
+linearmente, então o acumulado cresce como parábola. Os números foram calibrados
+pela tabela de XP da landing page: uma semana ativa dá algo perto de 425 XP, o
+que põe o nível 7 a uns três meses de trabalho. É o mesmo cálculo que desenha o
+HUD da página inicial, então mexer em `xp_to_advance/1` muda a promessa da
+página junto com o jogo.
+
 ## Testes
 
 ```sh
@@ -117,7 +131,7 @@ mix test
 
 ## Próximos passos
 
-1. Autenticação e o conceito de projeto.
-2. Webhook do GitHub alimentando um motor de XP de verdade.
-3. O painel do projeto em LiveView, com a barra de XP subindo ao vivo.
-4. Vercel e Stripe.
+1. Conectar um repositório a um projeto (aí sim pedindo escopo `repo`).
+2. Webhook do GitHub virando eventos de XP.
+3. O painel do projeto em LiveView, com a barra subindo ao vivo.
+4. Conquistas, linha do tempo, Vercel e Stripe.

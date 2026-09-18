@@ -1,6 +1,8 @@
 defmodule CommitCraftWeb.PageController do
   use CommitCraftWeb, :controller
 
+  alias CommitCraft.Game.Level
+
   # O chão do herói: a fita de commits por onde o artesão caminha. Os blocos
   # dourados e de musgo são os eventos raros — venda e deploy — para que a fita
   # já conte, sozinha, como o jogo pontua.
@@ -99,11 +101,17 @@ defmodule CommitCraftWeb.PageController do
     }
   ]
 
+  # O projeto de exemplo do topo da página. 6.940 de XP dá nível 7 com
+  # 1.240 de 2.000 — os mesmos números que a página sempre mostrou, agora
+  # vindos da curva.
+  @demo_xp 6940
+
   @pitch "Cada commit vira XP. Cada deploy, uma conquista. Cada venda, ouro. O CommitCraft se liga no seu repositório e transforma meses de trabalho invisível numa barra que enche na sua frente."
 
   def home(conn, _params) do
     conn
     |> assign(:page_title, "CommitCraft — seu projeto, jogável")
+    |> assign(:demo_progress, Level.progress(@demo_xp))
     |> assign(:pitch, @pitch)
     |> assign(:ground, @ground)
     |> assign(:party, @party)

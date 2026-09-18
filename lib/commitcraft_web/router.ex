@@ -30,7 +30,9 @@ defmodule CommitCraftWeb.Router do
   scope "/", CommitCraftWeb do
     pipe_through [:browser, :require_authenticated_user]
 
-    get "/jogar", PlayController, :index
+    get "/jogar", ProjectController, :index
+    post "/jogar", ProjectController, :create
+    get "/jogar/:slug", ProjectController, :show
   end
 
   # Other scopes may use custom stacks.
