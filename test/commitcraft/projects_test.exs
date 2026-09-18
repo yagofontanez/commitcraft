@@ -96,6 +96,35 @@ defmodule CommitCraft.ProjectsTest do
     end
   end
 
+  describe "delete_project/2" do
+    test "apaga o próprio projeto" do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "Descartável"})
+
+      assert {:ok, apagado} = Projects.delete_project(user, project.slug)
+      assert apagado.id == project.id
+      assert Projects.list_projects(user) == []
+    end
+
+    test "não apaga o projeto de outra pessoa" do
+      dona = user_fixture()
+      estranho = user_fixture()
+      project = project_fixture(dona, %{name: "Meu"})
+
+      assert Projects.delete_project(estranho, project.slug) == :error
+      assert [ainda_la] = Projects.list_projects(dona)
+      assert ainda_la.id == project.id
+    end
+
+    test "apelido inexistente e apelido alheio respondem igual" do
+      user = user_fixture()
+      alheio = project_fixture(user_fixture(), %{name: "Alheio"})
+
+      assert Projects.delete_project(user, "nunca-existiu") == :error
+      assert Projects.delete_project(user, alheio.slug) == :error
+    end
+  end
+
   describe "slugify/1" do
     test "tira acento, pontuação e espaço sobrando" do
       assert Projects.slugify("Ração & Cia — 2024") == "racao-cia-2024"

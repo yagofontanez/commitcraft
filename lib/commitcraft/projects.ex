@@ -25,6 +25,20 @@ defmodule CommitCraft.Projects do
     Repo.get_by(Project, user_id: user.id, slug: slug)
   end
 
+  @doc """
+  Apaga um projeto da pessoa, pelo apelido.
+
+  Recebe o dono junto para que não exista caminho em que um apelido adivinhado
+  apague o projeto de outra conta. Devolve `:error` quando não há o que apagar —
+  inexistente e alheio respondem igual, de propósito.
+  """
+  def delete_project(%User{} = user, slug) when is_binary(slug) do
+    case get_project(user, slug) do
+      nil -> :error
+      project -> {:ok, Repo.delete!(project)}
+    end
+  end
+
   @doc "Um changeset vazio, para o formulário."
   def change_project(%Project{} = project \\ %Project{}, attrs \\ %{}) do
     Project.changeset(project, attrs)

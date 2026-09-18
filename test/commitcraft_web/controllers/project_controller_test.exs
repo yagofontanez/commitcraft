@@ -81,6 +81,18 @@ defmodule CommitCraftWeb.ProjectControllerTest do
       assert html =~ "Nada aconteceu ainda"
     end
 
+    test "oferece apagar, com o que se perde escrito em números", %{conn: conn, user: user} do
+      project_fixture(user, %{name: "Minha Loja", xp: 6940})
+
+      html = conn |> get(~p"/jogar/minha-loja") |> html_response(200)
+
+      assert html =~ "Apagar este projeto"
+      # O aviso precisa dizer o tamanho do estrago, não só "tem certeza?".
+      assert html =~ "o nível 7"
+      assert html =~ "6.940 de XP"
+      assert html =~ "Não dá para desfazer"
+    end
+
     test "projeto de outra pessoa responde igual a projeto inexistente", %{conn: conn} do
       project_fixture(user_fixture(), %{name: "Segredo Alheio"})
 
@@ -94,6 +106,37 @@ defmodule CommitCraftWeb.ProjectControllerTest do
 
       assert Phoenix.Flash.get(alheio.assigns.flash, :error) ==
                Phoenix.Flash.get(inexistente.assigns.flash, :error)
+    end
+  end
+
+  describe "DELETE /jogar/:slug" do
+    test "apaga e volta para a lista", %{conn: conn, user: user} do
+      project_fixture(user, %{name: "Descartável"})
+
+      conn = delete(conn, ~p"/jogar/descartavel")
+
+      assert redirected_to(conn) == ~p"/jogar"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Descartável"
+      assert Projects.list_projects(user) == []
+    end
+
+    test "não apaga o projeto de outra pessoa", %{conn: conn} do
+      dona = user_fixture()
+      project_fixture(dona, %{name: "Segredo Alheio"})
+
+      conn = delete(conn, ~p"/jogar/segredo-alheio")
+
+      assert redirected_to(conn) == ~p"/jogar"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Não encontrei"
+      assert [ainda_la] = Projects.list_projects(dona)
+      assert ainda_la.name == "Segredo Alheio"
+    end
+
+    test "exige estar logado", %{user: user} do
+      project_fixture(user, %{name: "Descartável"})
+
+      assert build_conn() |> delete(~p"/jogar/descartavel") |> redirected_to() == ~p"/"
+      assert length(Projects.list_projects(user)) == 1
     end
   end
 end

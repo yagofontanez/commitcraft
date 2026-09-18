@@ -35,6 +35,32 @@
       request e deploy vai cair aqui e mexer nessa barra.
     </p>
   </div>
+  <%!-- Apagar fica atrás de um <details>: um clique abre, outro confirma. Sem
+        JS, sem diálogo nativo do navegador, e o texto diz em números o que está
+        sendo jogado fora — hoje é pouco, daqui a uns meses não vai ser. --%>
+  <details class="group mt-16 max-w-xl">
+    <summary class="inline-flex cursor-pointer list-none items-center gap-2 text-sm text-muted transition-colors hover:text-ember [&::-webkit-details-marker]:hidden">
+      <span class="font-pixel text-[10px] text-muted group-open:text-ember">&#9660;</span>
+      Apagar este projeto
+    </summary>
+
+    <div class="frame mt-5 px-6 py-6">
+      <p class="text-sm leading-relaxed text-bone">
+        Isso apaga <span class="font-semibold">{@project.name}</span>, o nível {@progress.level} e os {numero(
+          @progress.xp
+        )} de XP acumulados.
+        Não dá para desfazer.
+      </p>
+
+      <.link
+        href={~p"/jogar/#{@project.slug}"}
+        method="delete"
+        class="btn-ghost-craft mt-6 !text-ember"
+      >
+        Apagar mesmo
+      </.link>
+    </div>
+  </details>
 </main>
 
 <.site_footer width="full" />

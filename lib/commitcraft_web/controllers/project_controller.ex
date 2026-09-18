@@ -43,6 +43,20 @@ defmodule CommitCraftWeb.ProjectController do
     end
   end
 
+  def delete(conn, %{"slug" => slug}) do
+    case Projects.delete_project(conn.assigns.current_user, slug) do
+      {:ok, project} ->
+        conn
+        |> put_flash(:info, "\"#{project.name}\" foi apagado.")
+        |> redirect(to: ~p"/jogar")
+
+      :error ->
+        conn
+        |> put_flash(:error, "Não encontrei esse projeto.")
+        |> redirect(to: ~p"/jogar")
+    end
+  end
+
   defp render_index(conn, changeset) do
     # O nível vem junto de cada projeto porque a tela desenha os dois lados da
     # mesma informação; calcular na hora de renderizar faria a mesma conta

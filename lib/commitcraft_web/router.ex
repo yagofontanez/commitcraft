@@ -33,6 +33,7 @@ defmodule CommitCraftWeb.Router do
     get "/jogar", ProjectController, :index
     post "/jogar", ProjectController, :create
     get "/jogar/:slug", ProjectController, :show
+    delete "/jogar/:slug", ProjectController, :delete
   end
 
   # Other scopes may use custom stacks.
