@@ -75,7 +75,15 @@ config :phoenix_live_view,
 
 # Credenciais do OAuth App do GitHub. Crie um em
 # https://github.com/settings/developers com a callback URL
-# http://localhost:4000/auth/github/callback e exporte as duas variáveis.
+# http://localhost:4000/auth/github/callback.
 config :commitcraft, CommitCraft.GitHub.OAuth,
   client_id: System.get_env("GITHUB_CLIENT_ID"),
   client_secret: System.get_env("GITHUB_CLIENT_SECRET")
+
+# Em vez de depender de `export` no terminal certo — que falha em silêncio e
+# manda a pessoa caçar por que o login "não está configurado" —, as credenciais
+# de desenvolvimento podem morar em config/dev.secret.exs, que o git ignora.
+# Rode `mix commitcraft.dev_secrets` para criar o arquivo.
+if File.exists?(Path.expand("dev.secret.exs", __DIR__)) do
+  import_config "dev.secret.exs"
+end

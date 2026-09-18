@@ -40,15 +40,20 @@ Crie um em <https://github.com/settings/developers> → *New OAuth App*:
 | Homepage URL | `http://localhost:4000` |
 | Authorization callback URL | `http://localhost:4000/auth/github/callback` |
 
-Depois exporte as credenciais antes de subir o servidor:
+Depois guarde as credenciais localmente:
 
 ```sh
-export GITHUB_CLIENT_ID=Ov23li...
-export GITHUB_CLIENT_SECRET=...
+mix commitcraft.dev_secrets   # cria config/dev.secret.exs, ignorado pelo git
 ```
 
-Sem elas o servidor sobe normalmente e o botão de entrar responde com um aviso —
-em produção, `config/runtime.exs` recusa iniciar sem as duas.
+Preencha o `client_id` e o `client_secret` no arquivo e reinicie o servidor.
+As variáveis de ambiente `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` também
+funcionam, mas o arquivo evita o modo mais comum de errar: exportar no terminal
+e subir o servidor em outro.
+
+Sem credenciais o servidor sobe normalmente, o botão de entrar responde com um
+aviso e o terminal explica o que fazer. Em produção, `config/runtime.exs` recusa
+iniciar sem as duas.
 
 ## Rodando
 

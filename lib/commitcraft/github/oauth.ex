@@ -118,10 +118,22 @@ defmodule CommitCraft.GitHub.OAuth do
     end
   end
 
+  # O que `mix commitcraft.dev_secrets` escreve no lugar das credenciais.
+  @placeholder "COLE_AQUI_"
+
   @doc """
-  Se o OAuth está configurado. Sem isso, o botão de entrar não deve aparecer.
+  Se dá para entrar neste servidor.
+
+  O placeholder do arquivo de desenvolvimento conta como não configurado: mandar
+  a pessoa para o GitHub com um client_id falso a joga numa página de erro do
+  próprio GitHub, que não explica nada. Melhor recusar aqui, onde dá para dizer
+  o que fazer.
   """
-  def configured?, do: is_binary(client_id()) and client_id() != ""
+  def configured? do
+    id = client_id()
+
+    is_binary(id) and id != "" and not String.starts_with?(id, @placeholder)
+  end
 
   # O GitHub devolve os escopos concedidos separados por vírgula — e uma string
   # vazia quando não concedeu nenhum.

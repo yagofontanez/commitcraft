@@ -54,14 +54,31 @@ defmodule CommitCraftWeb.AuthControllerTest do
     end
 
     test "avisa quando o servidor não tem OAuth configurado", %{conn: conn} do
-      anterior = Application.get_env(:commitcraft, CommitCraft.GitHub.OAuth)
-      Application.put_env(:commitcraft, CommitCraft.GitHub.OAuth, client_id: nil)
-      on_exit(fn -> Application.put_env(:commitcraft, CommitCraft.GitHub.OAuth, anterior) end)
+      # Um client_id em branco e o placeholder do arquivo de desenvolvimento
+      # contam igual: mandar a pessoa para o GitHub com credencial falsa a joga
+      # numa página de erro que não explica nada.
+      for id <- [nil, "", "COLE_AQUI_O_CLIENT_ID"] do
+        com_client_id(id, fn ->
+          conn = get(conn, ~p"/auth/github")
 
-      conn = get(conn, ~p"/auth/github")
+          assert redirected_to(conn) == ~p"/"
 
-      assert redirected_to(conn) == ~p"/"
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "não está configurado"
+          assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "não está configurado",
+                 "client_id #{inspect(id)} deveria contar como não configurado"
+        end)
+      end
+    end
+
+    defp com_client_id(id, fun) do
+      chave = CommitCraft.GitHub.OAuth
+      anterior = Application.get_env(:commitcraft, chave)
+      Application.put_env(:commitcraft, chave, Keyword.put(anterior, :client_id, id))
+
+      try do
+        fun.()
+      after
+        Application.put_env(:commitcraft, chave, anterior)
+      end
     end
   end
 

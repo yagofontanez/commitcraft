@@ -35,3 +35,5 @@ commitcraft-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Credenciais de desenvolvimento (OAuth do GitHub e afins). Nunca versionar.
+/config/dev.secret.exs

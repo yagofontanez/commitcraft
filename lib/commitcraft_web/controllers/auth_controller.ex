@@ -19,6 +19,17 @@ defmodule CommitCraftWeb.AuthController do
       |> put_session(:github_oauth_state, state)
       |> redirect(external: OAuth.authorize_url(state, callback_url()))
     else
+      Logger.warning("""
+      Login com GitHub não configurado.
+
+      Crie um OAuth App em https://github.com/settings/developers com a callback
+      URL #{callback_url()} e guarde as credenciais:
+
+          mix commitcraft.dev_secrets
+
+      Depois preencha config/dev.secret.exs e reinicie o servidor.
+      """)
+
       conn
       |> put_flash(:error, "O login com GitHub ainda não está configurado neste servidor.")
       |> redirect(to: ~p"/")
