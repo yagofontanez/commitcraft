@@ -317,9 +317,18 @@ estar em andamento.
 mix test
 ```
 
+## Colocando no ar
+
+Ver [DEPLOY.md](DEPLOY.md). O alvo é o Fly.io, e a razão é específica deste app:
+a tela do projeto é LiveView e mantém websocket aberto, o PubSub precisa de
+processo vivo, e o webhook exige URL estável com TLS.
+
+O cuidado que mais importa lá: **`SECRET_KEY_BASE` não pode mudar depois do
+primeiro acesso**, porque é dele que sai a chave que cifra os tokens do GitHub.
+
 ## Próximos passos
 
-1. Colocar no ar, para as integrações deixarem de depender de um túnel efêmero.
-2. Reavaliar conquistas antigas quando o catálogo crescer — como são funções
+1. Reavaliar conquistas antigas quando o catálogo crescer — como são funções
    puras sobre os eventos, dá para destravar retroativamente.
-3. A lista de projetos também ao vivo.
+2. A lista de projetos também ao vivo.
+3. Metas como chefe: transformar o XP acumulado em algo com fim.

@@ -1,0 +1,41 @@
+# Configuração do deploy no Fly.io.
+#
+# O nome do app e a região precisam ser os seus: rode `fly launch --no-deploy`
+# uma vez e ele preenche, ou edite à mão antes do primeiro deploy.
+
+app = "commitcraft"
+primary_region = "gru"  # São Paulo
+
+[build]
+
+# O script `bin/server` só inicia o sistema — ele não migra. Sem esta linha o
+# banco fica na versão antiga e o app sobe quebrado na primeira consulta a uma
+# coluna que ainda não existe.
+[deploy]
+  release_command = "/app/bin/migrate"
+
+[env]
+  PHX_HOST = "commitcraft.fly.dev"
+  PORT = "8080"
+  # O Fly liga as máquinas por IPv6 interno; sem isto o Ecto não acha o banco.
+  ECTO_IPV6 = "true"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # O CommitCraft mantém websocket aberto para a tela ao vivo. Uma máquina que
+  # dorme derruba essas conexões e perde entregas de webhook enquanto acorda —
+  # por isso ela fica de pé.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 800
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

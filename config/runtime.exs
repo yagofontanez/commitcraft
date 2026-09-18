@@ -70,7 +70,11 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  # Cair em "example.com" em silêncio geraria links e webhooks apontando para
+  # um domínio que não é seu. Melhor não subir.
+  host =
+    System.get_env("PHX_HOST") ||
+      raise("falta a variável PHX_HOST: é o domínio que vai nos links e no OAuth")
 
   config :commitcraft, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
