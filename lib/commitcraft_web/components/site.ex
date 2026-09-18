@@ -36,7 +36,14 @@ defmodule CommitCraftWeb.Site do
           {render_slot(@nav)}
         </nav>
 
-        <div :if={@current_user} class="flex shrink-0 items-center gap-4">
+        <div :if={@current_user} class="flex shrink-0 items-center gap-5">
+          <.link
+            navigate={~p"/ranking"}
+            class="hidden text-sm text-muted transition-colors hover:text-bone sm:inline"
+          >
+            Ranking
+          </.link>
+
           <a href={~p"/jogar"} class="flex items-center gap-2.5">
             <img
               :if={@current_user.avatar_url}

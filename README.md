@@ -185,6 +185,21 @@ WEBHOOK_BASE_URL=https://algo.ngrok-free.app mix phx.server
 Sem `WEBHOOK_BASE_URL` o repositório conecta mas o webhook não é instalado — e a
 tela do projeto diz exatamente isso, com um botão para tentar de novo.
 
+## O ranking
+
+`/ranking` soma o XP dos projetos de cada pessoa e ordena. Três decisões:
+
+- **Exige estar logado.** A página conta quem usa o CommitCraft e o quanto essa
+  pessoa trabalha; deixar isso aberto seria decidir pelos outros.
+- **Nome de projeto e repositório nunca saem.** Saber que alguém trabalha muito
+  é bem diferente de saber no quê — e tem gente com repositório privado. Um
+  teste conecta um repo privado a outra conta e verifica que nada disso aparece.
+- **Só entra quem tem projeto.** Uma lista cheia de gente que entrou e nunca
+  começou nada não é ranking, é lista de cadastros.
+
+O desempate é pelo login, não pela ordem que o banco devolver — sem isso, duas
+pessoas empatadas trocariam de lugar a cada carregamento.
+
 ## A tela ao vivo
 
 `/jogar/:slug` é um LiveView. Quando um webhook chega, o processo que atendeu a

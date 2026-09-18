@@ -44,6 +44,8 @@ defmodule CommitCraftWeb.Router do
 
     get "/auth/github/ampliar", AuthController, :upgrade
 
+    get "/ranking", RankingController, :index
+
     get "/jogar", ProjectController, :index
     post "/jogar", ProjectController, :create
     get "/jogar/:slug/repositorio", ProjectController, :choose_repo

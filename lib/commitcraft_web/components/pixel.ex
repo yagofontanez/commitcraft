@@ -146,7 +146,46 @@ defmodule CommitCraftWeb.Pixel do
     "............"
   ]
 
+  # Taça: o primeiro lugar.
+  @trophy [
+    "..kkkkkkkk..",
+    ".kggggggggk.",
+    "kkggggggggkk",
+    "kgkggggggkgk",
+    "kgkggggggkgk",
+    "kkkggggggkkk",
+    "..kgggggok..",
+    "...kggook...",
+    "....kook....",
+    "...kooook...",
+    "..kooooook..",
+    "..kkkkkkkk.."
+  ]
+
+  # Medalha: segundo e terceiro. A cor vem por `recolor`, então a mesma grade
+  # serve para prata e bronze.
+  #
+  # A primeira versão tinha a fita em duas tirinhas de um pixel e lia como
+  # antena de inseto. Fita grossa em V resolve: o disco precisa ter de onde
+  # pendurar.
+  @medal [
+    "kmmk....kmmk",
+    ".kmmk..kmmk.",
+    "..kmmkkmmk..",
+    "...kmmmmk...",
+    "...kkkkkk...",
+    "..kggggggk..",
+    ".kgggggggok.",
+    ".kggggggook.",
+    "..kggggook..",
+    "...kkkkkk...",
+    "............",
+    "............"
+  ]
+
   @sprites %{
+    trophy: @trophy,
+    medal: @medal,
     crafter_a: @crafter_a,
     crafter_b: @crafter_b,
     coin: @coin,

@@ -1,0 +1,84 @@
+<.flashes flash={@flash} />
+<.site_header current_user={@current_user} width="full" />
+
+<main class="px-6 py-16 md:px-10 md:py-20">
+  <h1 class="text-3xl font-semibold tracking-tight text-bone md:text-4xl">Ranking</h1>
+
+  <p class="mt-5 max-w-2xl text-sm leading-relaxed text-muted">
+    A soma do XP de todos os projetos de cada pessoa. O que aparece aqui é só
+    isso — nome de projeto e repositório ficam de fora.
+  </p>
+
+  <div :if={@rows == []} class="frame mt-12 px-8 py-20 text-center">
+    <p class="font-pixel text-[13px] text-muted">Ninguém pontuou ainda</p>
+    <p class="mx-auto mt-5 max-w-sm text-sm leading-relaxed text-muted">
+      Conecte um repositório a um projeto e você será o primeiro.
+    </p>
+  </div>
+
+  <ul :if={@rows != []} class="mt-12 space-y-3">
+    <li
+      :for={row <- @rows}
+      class={[
+        "frame flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-5",
+        row.user.id == @current_user.id && "frame-gold"
+      ]}
+    >
+      <%!-- Pódio ganha metal; do quarto em diante, só o número. Medalha para
+            todo mundo não é medalha. --%>
+      <div class="flex w-12 shrink-0 items-center justify-center">
+        <.sprite
+          :if={podium(row.position)}
+          name={podium(row.position).sprite}
+          recolor={podium(row.position).paint}
+          class="h-9 w-9"
+        />
+        <span :if={is_nil(podium(row.position))} class="font-pixel text-sm text-muted">
+          {row.position}
+        </span>
+      </div>
+
+      <img
+        :if={row.user.avatar_url}
+        src={row.user.avatar_url}
+        alt=""
+        width="44"
+        height="44"
+        class="h-11 w-11 shrink-0 border-2 border-stone"
+      />
+
+      <div class="min-w-0 flex-1">
+        <p class={[
+          "truncate font-semibold",
+          if(podium(row.position), do: podium(row.position).label, else: "text-bone")
+        ]}>
+          {CommitCraft.Accounts.User.display_name(row.user)}
+        </p>
+        <p class="mt-1 truncate text-xs text-muted">
+          @{row.user.github_login} · {row.projects}
+          {if row.projects == 1, do: "projeto", else: "projetos"}
+        </p>
+      </div>
+
+      <div class="shrink-0 text-right">
+        <p class="font-pixel text-sm text-gold">{numero(row.xp)} XP</p>
+        <p class="mt-1 font-pixel text-[10px] text-muted">LV {padded(row.progress.level)}</p>
+      </div>
+    </li>
+  </ul>
+
+  <%!-- Quem ficou fora da lista ainda quer saber onde está — é justamente aí
+        que a posição importa. --%>
+  <p
+    :if={@my_position && @my_position > length(@rows)}
+    class="mt-8 text-sm text-muted"
+  >
+    Você está em {@my_position}º.
+  </p>
+
+  <p :if={is_nil(@my_position)} class="mt-8 text-sm text-muted">
+    Você ainda não aparece aqui: crie um projeto e conecte um repositório.
+  </p>
+</main>
+
+<.site_footer width="full" />
