@@ -49,6 +49,122 @@ const Jornada = {
   }
 }
 
+// ─────────────────────────────── som ───────────────────────────────
+//
+// Os bipes são sintetizados no WebAudio, não tocados de arquivo: pela mesma
+// razão que os sprites são grades de texto — nenhum binário no repositório, e
+// dá para afinar uma nota mexendo num número.
+//
+// Três regras que não são capricho:
+//   1. O navegador proíbe tocar som antes de a pessoa interagir com a página.
+//      Por isso o contexto só nasce no primeiro clique ou tecla.
+//   2. Quem desligou fica desligado: a escolha vai para o localStorage.
+//   3. Quem pediu menos movimento no sistema provavelmente também não quer
+//      barulho — começa mudo.
+const Som = {
+  contexto: null,
+  chave: "commitcraft:som",
+
+  ligado() {
+    const guardado = localStorage.getItem(this.chave)
+
+    if (guardado !== null) return guardado === "1"
+
+    return !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  },
+
+  alternar() {
+    const novo = !this.ligado()
+    localStorage.setItem(this.chave, novo ? "1" : "0")
+    if (novo) this.tocar([[660, 0.07]])
+    return novo
+  },
+
+  despertar() {
+    if (!this.contexto) {
+      const Contexto = window.AudioContext || window.webkitAudioContext
+      if (Contexto) this.contexto = new Contexto()
+    }
+
+    if (this.contexto && this.contexto.state === "suspended") this.contexto.resume()
+  },
+
+  // Cada nota é [frequência em hertz, duração em segundos]. A onda quadrada é
+  // o que dá o timbre de console de 8 bits; senoide soaria como despertador.
+  tocar(notas) {
+    if (!this.ligado() || !this.contexto) return
+
+    let quando = this.contexto.currentTime
+
+    for (const [hz, duracao] of notas) {
+      const oscilador = this.contexto.createOscillator()
+      const volume = this.contexto.createGain()
+
+      oscilador.type = "square"
+      oscilador.frequency.setValueAtTime(hz, quando)
+
+      // Sem esse decaimento cada nota termina num estalo.
+      volume.gain.setValueAtTime(0.06, quando)
+      volume.gain.exponentialRampToValueAtTime(0.0001, quando + duracao)
+
+      oscilador.connect(volume).connect(this.contexto.destination)
+      oscilador.start(quando)
+      oscilador.stop(quando + duracao)
+
+      quando += duracao
+    }
+  },
+
+  xp() {
+    this.tocar([[880, 0.05], [1175, 0.06]])
+  },
+
+  levelUp() {
+    // Arpejo subindo: a frase que todo console toca quando algo dá certo.
+    this.tocar([[523, 0.09], [659, 0.09], [784, 0.09], [1047, 0.22]])
+  },
+
+  conquista() {
+    this.tocar([[784, 0.08], [1047, 0.08], [1319, 0.18]])
+  }
+}
+
+// O contexto de áudio só pode nascer depois de um gesto da pessoa.
+for (const gesto of ["pointerdown", "keydown"]) {
+  window.addEventListener(gesto, () => Som.despertar(), {once: true})
+}
+
+// O LiveView avisa pelo `push_event`, que o Phoenix entrega como um evento de
+// janela com prefixo `phx:`.
+window.addEventListener("phx:som", (evento) => {
+  const toque = {xp: "xp", level_up: "levelUp", conquista: "conquista"}[evento.detail.tipo]
+
+  if (toque) Som[toque]()
+})
+
+// Delegação em vez de listener no botão: o cabeçalho é redesenhado a cada
+// navegação do LiveView, e um listener preso ao elemento morreria junto.
+const pintarBotoes = () => {
+  const ligado = Som.ligado()
+
+  for (const botao of document.querySelectorAll("[data-som]")) {
+    botao.setAttribute("aria-pressed", String(ligado))
+    botao.dataset.ligado = ligado ? "1" : "0"
+    botao.title = ligado ? "Desligar o som" : "Ligar o som"
+  }
+}
+
+document.addEventListener("click", (evento) => {
+  if (!evento.target.closest("[data-som]")) return
+
+  Som.despertar()
+  Som.alternar()
+  pintarBotoes()
+})
+
+document.addEventListener("DOMContentLoaded", pintarBotoes)
+window.addEventListener("phx:page-loading-stop", pintarBotoes)
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,

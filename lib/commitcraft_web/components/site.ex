@@ -36,17 +36,34 @@ defmodule CommitCraftWeb.Site do
           {render_slot(@nav)}
         </nav>
 
-        <div :if={@current_user} class="flex shrink-0 items-center gap-5">
+        <%!-- Tudo que é controle fica num grupo só à direita; solto, o
+              `justify-between` espalharia os itens pelo cabeçalho inteiro. --%>
+        <div class="flex shrink-0 items-center gap-4 sm:gap-5">
+          <%!-- O botão é de JavaScript puro, e não um hook de LiveView, porque
+                precisa funcionar também na tela de título, que é uma página
+                comum. O estado mora no navegador de quem clicou. --%>
+          <button
+            type="button"
+            data-som
+            aria-pressed="true"
+            aria-label="Ligar ou desligar o som"
+            title="Desligar o som"
+            class="p-1.5 text-muted transition-opacity hover:text-gold data-[ligado=0]:opacity-35"
+          >
+            <.sprite name={:speaker} class="h-5 w-5" />
+          </button>
+
           <.link
+            :if={@current_user}
             navigate={~p"/ranking"}
             class="hidden text-sm text-muted transition-colors hover:text-bone sm:inline"
           >
             Ranking
           </.link>
 
-          <a href={~p"/jogar"} class="flex items-center gap-2.5">
+          <a :if={@current_user} href={~p"/jogar"} class="flex items-center gap-2.5">
             <img
-              :if={@current_user.avatar_url}
+              :if={@current_user && @current_user.avatar_url}
               src={@current_user.avatar_url}
               alt=""
               width="28"
@@ -54,22 +71,28 @@ defmodule CommitCraftWeb.Site do
               class="h-7 w-7 shrink-0 border-2 border-stone"
             />
             <span class="hidden font-pixel text-[11px] text-bone sm:inline">
-              {@current_user.github_login}
+              {@current_user && @current_user.github_login}
             </span>
           </a>
-          <.link href={~p"/auth/sair"} method="delete" class="text-sm text-muted hover:text-bone">
+
+          <.link
+            :if={@current_user}
+            href={~p"/auth/sair"}
+            method="delete"
+            class="text-sm text-muted hover:text-bone"
+          >
             Sair
           </.link>
-        </div>
 
-        <a
-          :if={is_nil(@current_user)}
-          href={~p"/auth/github"}
-          class="btn-craft shrink-0 !px-4 !py-3 text-[10px] sm:!px-5 sm:!py-3.5 sm:text-[11px]"
-        >
-          <.sprite name={:commits} class="h-4 w-4" recolor={%{"n" => "#0d0a1a", "l" => "#0d0a1a"}} />
-          Entrar com GitHub
-        </a>
+          <a
+            :if={is_nil(@current_user)}
+            href={~p"/auth/github"}
+            class="btn-craft !px-4 !py-3 text-[10px] sm:!px-5 sm:!py-3.5 sm:text-[11px]"
+          >
+            <.sprite name={:commits} class="h-4 w-4" recolor={%{"n" => "#0d0a1a", "l" => "#0d0a1a"}} />
+            Entrar com GitHub
+          </a>
+        </div>
       </div>
     </header>
     """

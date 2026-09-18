@@ -8,6 +8,7 @@ defmodule CommitCraftWeb.ProjectLive.Show do
   """
   use CommitCraftWeb, :live_view
 
+  alias CommitCraft.Game.Class
   alias CommitCraft.Game.Level
   alias CommitCraft.GitHub.Api
   alias CommitCraft.Projects
@@ -49,13 +50,26 @@ defmodule CommitCraftWeb.ProjectLive.Show do
     depois = socket.assigns.progress.level
 
     socket =
-      if depois > antes do
-        # O nível subir é o momento que o jogo inteiro existe para produzir.
-        # Fica na tela por alguns segundos e sai sozinho.
-        Process.send_after(self(), :esconder_level_up, 6_000)
-        assign(socket, :level_up, depois)
-      else
-        socket
+      cond do
+        depois > antes ->
+          # O nível subir é o momento que o jogo inteiro existe para produzir.
+          # Fica na tela por alguns segundos e sai sozinho.
+          Process.send_after(self(), :esconder_level_up, 6_000)
+
+          socket
+          |> assign(:level_up, depois)
+          |> push_event("som", %{tipo: "level_up"})
+
+        novidade.achievements != [] ->
+          push_event(socket, "som", %{tipo: "conquista"})
+
+        # Um som por entrega, não um por commit: um push com trinta commits
+        # viraria metralhadora.
+        novidade.events != [] ->
+          push_event(socket, "som", %{tipo: "xp"})
+
+        true ->
+          socket
       end
 
     {:noreply, socket}
@@ -174,6 +188,9 @@ defmodule CommitCraftWeb.ProjectLive.Show do
     |> assign(:webhooks, Projects.webhooks_by_source(project))
     |> assign(:listening?, Projects.listening?(project))
     |> assign(:streak, Projects.current_streak(project))
+    # A classe olha o histórico inteiro, não só os últimos que a tela mostra:
+    # um projeto não deixa de ser Maratonista porque a lista foi cortada em 30.
+    |> assign(:class, project |> Projects.list_events(limit: 500) |> Class.for_events())
   end
 
   defp remover_hook_do_github(user, project) do

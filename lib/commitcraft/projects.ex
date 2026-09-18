@@ -193,6 +193,15 @@ defmodule CommitCraft.Projects do
     |> Repo.all()
   end
 
+  @doc "O canal de um projeto. Quem estiver com a tela aberta escuta aqui."
+  def topic(%Project{id: id}), do: "project:#{id}"
+  def topic(id) when is_integer(id), do: "project:#{id}"
+
+  @doc "Passa a receber as novidades de um projeto."
+  def subscribe(%Project{} = project) do
+    Phoenix.PubSub.subscribe(CommitCraft.PubSub, topic(project))
+  end
+
   @doc """
   Registra o que aconteceu e acerta o XP do projeto.
 
@@ -203,15 +212,6 @@ defmodule CommitCraft.Projects do
 
   Devolve `{:ok, %{project: project, events: recem_registrados}}`.
   """
-  @doc "O canal de um projeto. Quem estiver com a tela aberta escuta aqui."
-  def topic(%Project{id: id}), do: "project:#{id}"
-  def topic(id) when is_integer(id), do: "project:#{id}"
-
-  @doc "Passa a receber as novidades de um projeto."
-  def subscribe(%Project{} = project) do
-    Phoenix.PubSub.subscribe(CommitCraft.PubSub, topic(project))
-  end
-
   def record_events(%Project{} = project, acontecimentos) when is_list(acontecimentos) do
     Repo.transaction(fn ->
       registrados = Enum.flat_map(acontecimentos, &registrar(project, &1))

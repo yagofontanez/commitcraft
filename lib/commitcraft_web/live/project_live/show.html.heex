@@ -56,6 +56,13 @@
     </.form>
   </details>
 
+  <%!-- A classe é observada, não escolhida: o projeto ganha o apelido pelo jeito
+        como foi construído. --%>
+  <p :if={@class} class="mt-6 flex flex-wrap items-baseline gap-x-3 text-sm">
+    <span class="font-pixel text-[11px] text-violet">{@class.name}</span>
+    <span class="text-muted">{@class.how}</span>
+  </p>
+
   <div class="mt-10 max-w-md">
     <.hud progress={@progress}>
       <:caption>

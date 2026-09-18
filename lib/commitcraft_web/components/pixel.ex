@@ -183,7 +183,25 @@ defmodule CommitCraftWeb.Pixel do
     "............"
   ]
 
+  # Alto-falante. As ondas usam `l` para que mutar seja só apagá-las por
+  # `recolor` — o mesmo desenho serve para ligado e desligado.
+  @speaker [
+    "............",
+    "......kk....",
+    ".....knk.l..",
+    "...kknnk..l.",
+    "kkknnnnk.l.l",
+    "knnnnnnk.l.l",
+    "knnnnnnk.l.l",
+    "kkknnnnk.l.l",
+    "...kknnk..l.",
+    ".....knk.l..",
+    "......kk....",
+    "............"
+  ]
+
   @sprites %{
+    speaker: @speaker,
     trophy: @trophy,
     medal: @medal,
     crafter_a: @crafter_a,

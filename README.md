@@ -185,6 +185,31 @@ WEBHOOK_BASE_URL=https://algo.ngrok-free.app mix phx.server
 Sem `WEBHOOK_BASE_URL` o repositório conecta mas o webhook não é instalado — e a
 tela do projeto diz exatamente isso, com um botão para tentar de novo.
 
+## O caminho, o som e a classe
+
+**O caminho** (`CommitCraftWeb.Game.journey/1`) é a linha do tempo desenhada
+como chão de jogo: cada acontecimento vira um bloco, do mais antigo à esquerda
+ao mais recente à direita, e o artesão fica de pé sobre o último. Build quebrado
+afunda o bloco — vira um buraco no caminho, e lê como buraco sem legenda.
+
+Um detalhe que custou um bug: **`phx-mounted` dispara para todo elemento que
+entra no DOM, inclusive no primeiro carregamento**. Sem distinguir o que é
+novidade, a tela inteira piscava ao abrir, como se o projeto todo tivesse
+acontecido naquele instante. O LiveView guarda os ids do que acabou de chegar e
+só esses recebem a animação.
+
+**O som** é sintetizado no WebAudio, não tocado de arquivo — mesma razão dos
+sprites serem grades de texto: nenhum binário no repositório, e dá para afinar
+uma nota mexendo num número. Três regras: o contexto de áudio só nasce depois de
+um gesto da pessoa (o navegador proíbe antes), a escolha de mudo fica no
+`localStorage`, e quem pediu menos movimento no sistema começa mudo. É **um som
+por entrega**, não por commit — um push com trinta commits viraria metralhadora.
+
+**A classe** (`CommitCraft.Game.Class`) é um título de RPG observado, não
+escolhido: ninguém marca "quero ser Faxineiro", o projeto vira Faxineiro porque
+os pull requests dele apagam mais do que escrevem. Como tudo no jogo, é função
+pura sobre os eventos — a classe muda sozinha quando o jeito de trabalhar muda.
+
 ## O ranking
 
 `/ranking` soma o XP dos projetos de cada pessoa e ordena. Três decisões:
