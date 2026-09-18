@@ -56,15 +56,58 @@
 
   <div class="hairline my-12"></div>
 
-  <%!-- Enquanto nada alimenta o XP, a tela diz isso em vez de fingir uma
-        linha do tempo vazia que parece defeito. --%>
-  <div class="frame flex flex-col items-center gap-5 px-8 py-20 text-center">
+  <%!-- Sem repositório, a tela diz isso em vez de fingir uma linha do tempo
+        vazia que parece defeito. --%>
+  <div
+    :if={is_nil(@project.repo_full_name)}
+    class="frame flex flex-col items-center gap-5 px-8 py-20 text-center"
+  >
     <.sprite name={:commits} class="h-12 w-12" recolor={%{"n" => "#6b5c99", "l" => "#4a3f75"}} />
     <p class="font-pixel text-[13px] leading-relaxed text-muted">Nada aconteceu ainda</p>
     <p class="max-w-md text-sm leading-relaxed text-muted">
       Este projeto está no nível {@progress.level} com {numero(@progress.xp)} de XP,
-      porque ainda não há repositório conectado. Quando houver, cada commit, pull
-      request e deploy vai cair aqui e mexer nessa barra.
+      porque ainda não há repositório conectado. Conecte um e cada commit, pull
+      request e deploy passa a cair aqui.
+    </p>
+    <.link navigate={~p"/jogar/#{@project.slug}/repositorio"} class="btn-craft mt-2">
+      Conectar repositório
+    </.link>
+  </div>
+
+  <div :if={@project.repo_full_name} class="frame px-7 py-6">
+    <div class="flex flex-wrap items-center justify-between gap-5">
+      <div class="flex min-w-0 items-center gap-4">
+        <.sprite name={:commits} class="h-8 w-8 shrink-0" />
+        <div class="min-w-0">
+          <p class="truncate font-semibold text-bone">{@project.repo_full_name}</p>
+          <p class="mt-1 text-xs text-muted">
+            <span :if={@project.repo_private}>repositório privado · </span>
+            conectado {Calendar.strftime(@project.repo_connected_at, "%d/%m/%Y")}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex shrink-0 items-center gap-5">
+        <.link
+          navigate={~p"/jogar/#{@project.slug}/repositorio"}
+          class="text-sm text-muted hover:text-bone"
+        >
+          trocar
+        </.link>
+        <.link
+          href={~p"/jogar/#{@project.slug}/repositorio"}
+          method="delete"
+          class="text-sm text-muted hover:text-ember"
+        >
+          desconectar
+        </.link>
+      </div>
+    </div>
+
+    <p class="mt-6 text-sm leading-relaxed text-muted">
+      O repositório está ligado, mas o CommitCraft ainda não escuta os eventos
+      dele — o webhook é o próximo pedaço a ser construído. Até lá a barra fica
+      parada.
     </p>
   </div>
   <%!-- Apagar fica atrás de um <details>: um clique abre, outro confirma. Sem

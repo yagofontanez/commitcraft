@@ -30,9 +30,14 @@ defmodule CommitCraftWeb.Router do
   scope "/", CommitCraftWeb do
     pipe_through [:browser, :require_authenticated_user]
 
+    get "/auth/github/ampliar", AuthController, :upgrade
+
     get "/jogar", ProjectController, :index
     post "/jogar", ProjectController, :create
     get "/jogar/:slug", ProjectController, :show
+    get "/jogar/:slug/repositorio", ProjectController, :choose_repo
+    post "/jogar/:slug/repositorio", ProjectController, :connect_repo
+    delete "/jogar/:slug/repositorio", ProjectController, :disconnect_repo
     put "/jogar/:slug", ProjectController, :update
     delete "/jogar/:slug", ProjectController, :delete
   end

@@ -2,31 +2,16 @@ defmodule CommitCraftWeb.AuthControllerTest do
   use CommitCraftWeb.ConnCase
 
   import CommitCraft.AccountsFixtures
+  import CommitCraft.GitHubStub, only: [stub: 1]
 
   alias CommitCraft.Accounts
   alias CommitCraft.Accounts.User
   alias CommitCraft.Repo
 
-  # Nenhum teste aqui fala com o GitHub: o Req é desviado para este plug, que
-  # responde conforme a rota pedida.
-  defp stub_github(opts) do
-    perfil =
-      Keyword.get(opts, :profile, %{"id" => 4242, "login" => "yagofontanez", "name" => "Yago"})
-
-    token = Keyword.get(opts, :token, %{"access_token" => "gho_abc", "scope" => "read:user"})
-
-    Req.Test.stub(CommitCraft.GitHub.OAuth, fn conn ->
-      case conn.request_path do
-        "/login/oauth/access_token" -> Req.Test.json(conn, token)
-        "/user" -> Req.Test.json(conn, perfil)
-      end
-    end)
-  end
-
   # Faz o caminho de ida para gravar o `state` na sessão, como um navegador faria.
-  defp com_state(conn) do
-    conn = get(conn, ~p"/auth/github")
-    {conn, Plug.Conn.get_session(conn, :github_oauth_state)}
+  defp com_state(conn, caminho \\ "/auth/github") do
+    conn = get(conn, caminho)
+    {conn, Plug.Conn.get_session(conn, :github_oauth).state}
   end
 
   describe "GET /auth/github" do
@@ -41,7 +26,7 @@ defmodule CommitCraftWeb.AuthControllerTest do
 
       assert params["client_id"] == "client-id-de-teste"
       assert params["redirect_uri"] =~ "/auth/github/callback"
-      assert params["state"] == Plug.Conn.get_session(conn, :github_oauth_state)
+      assert params["state"] == Plug.Conn.get_session(conn, :github_oauth).state
       assert params["state"] != nil
     end
 
@@ -84,7 +69,7 @@ defmodule CommitCraftWeb.AuthControllerTest do
 
   describe "GET /auth/github/callback" do
     test "cria a conta e abre a sessão", %{conn: conn} do
-      stub_github([])
+      stub([])
       {conn, state} = com_state(conn)
 
       conn = get(conn, ~p"/auth/github/callback?code=codigo-valido&state=#{state}")
@@ -99,7 +84,7 @@ defmodule CommitCraftWeb.AuthControllerTest do
     end
 
     test "entrar duas vezes não cria conta duplicada", %{conn: _conn} do
-      stub_github([])
+      stub([])
 
       for _ <- 1..2 do
         {c, state} = com_state(build_conn())
@@ -110,7 +95,7 @@ defmodule CommitCraftWeb.AuthControllerTest do
     end
 
     test "recusa quando o state não confere", %{conn: conn} do
-      stub_github([])
+      stub([])
       {conn, _state} = com_state(conn)
 
       conn = get(conn, ~p"/auth/github/callback?code=codigo&state=state-de-outra-pessoa")
@@ -122,7 +107,7 @@ defmodule CommitCraftWeb.AuthControllerTest do
     end
 
     test "recusa quando não houve ida, só volta", %{conn: conn} do
-      stub_github([])
+      stub([])
 
       conn = get(conn, ~p"/auth/github/callback?code=codigo&state=qualquer")
 
@@ -141,17 +126,88 @@ defmodule CommitCraftWeb.AuthControllerTest do
     end
 
     test "sobrevive ao GitHub recusando o código", %{conn: conn} do
-      Req.Test.stub(CommitCraft.GitHub.OAuth, fn c ->
-        # O GitHub responde 200 mesmo ao recusar; o erro vem no corpo.
-        Req.Test.json(c, %{"error" => "bad_verification_code"})
-      end)
+      # O GitHub responde 200 mesmo ao recusar; o erro vem no corpo.
+      stub(token: %{"error" => "bad_verification_code"})
 
       {conn, state} = com_state(conn)
       conn = get(conn, ~p"/auth/github/callback?code=expirado&state=#{state}")
 
       assert redirected_to(conn) == ~p"/"
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Não deu para entrar"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Não deu para falar com o GitHub"
       assert Repo.aggregate(User, :count) == 0
+    end
+  end
+
+  describe "GET /auth/github/ampliar" do
+    test "pede o escopo repo, que o login não pede", %{conn: conn} do
+      conn = conn |> log_in_user(user_fixture()) |> get(~p"/auth/github/ampliar")
+
+      params = conn |> redirected_to(302) |> URI.parse() |> Map.get(:query) |> URI.decode_query()
+
+      assert params["scope"] == "read:user repo"
+    end
+
+    test "exige estar logado", %{conn: conn} do
+      assert conn |> get(~p"/auth/github/ampliar") |> redirected_to() == ~p"/"
+    end
+
+    test "amplia a autorização e volta para onde a pessoa estava", %{conn: conn} do
+      user = user_fixture(id: 4242)
+      assert user.github_scopes == ["read:user"]
+
+      stub(token: CommitCraft.GitHubStub.token_com_repo())
+
+      conn = log_in_user(conn, user)
+
+      {conn, state} =
+        com_state(conn, "/auth/github/ampliar?voltar=/jogar/meu-projeto/repositorio")
+
+      conn = get(conn, ~p"/auth/github/callback?code=codigo&state=#{state}")
+
+      assert redirected_to(conn) == "/jogar/meu-projeto/repositorio"
+
+      atualizado = CommitCraft.Accounts.get_user(user.id)
+      assert atualizado.github_scopes == ["read:user", "repo"]
+      assert atualizado.github_token == "gho_repo"
+    end
+
+    test "recusa quando a autorização volta de outra conta do GitHub", %{conn: conn} do
+      user = user_fixture(id: 4242, login: "yagofontanez")
+
+      # A tela do GitHub deixa trocar de conta no meio do caminho; sem esta
+      # conferência, o token de uma conta grudaria na sessão de outra.
+      stub(
+        profile: %{"id" => 9999, "login" => "outra-pessoa", "name" => "Outra"},
+        token: CommitCraft.GitHubStub.token_com_repo()
+      )
+
+      conn = log_in_user(conn, user)
+      {conn, state} = com_state(conn, "/auth/github/ampliar")
+      conn = get(conn, ~p"/auth/github/callback?code=codigo&state=#{state}")
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "outra conta do GitHub"
+
+      intacto = CommitCraft.Accounts.get_user(user.id)
+      assert intacto.github_scopes == ["read:user"]
+      refute intacto.github_token == "gho_repo"
+    end
+
+    test "o state de uma reautorização não serve para entrar como outra pessoa", %{conn: conn} do
+      stub([])
+
+      # Pega um state emitido para ampliação e tenta usá-lo sem sessão aberta.
+      {conn_ampliar, state} =
+        conn |> log_in_user(user_fixture(id: 4242)) |> com_state("/auth/github/ampliar")
+
+      sessao = Plug.Conn.get_session(conn_ampliar, :github_oauth)
+
+      conn =
+        build_conn()
+        |> Phoenix.ConnTest.init_test_session(%{github_oauth: sessao})
+        |> get(~p"/auth/github/callback?code=codigo&state=#{state}")
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "sessão expirou"
+      refute Plug.Conn.get_session(conn, :user_id)
     end
   end
 
@@ -177,7 +233,7 @@ defmodule CommitCraftWeb.AuthControllerTest do
     end
 
     test "volta para onde a pessoa queria ir depois de entrar", %{conn: conn} do
-      stub_github([])
+      stub([])
 
       # Bate numa página protegida, é barrada, entra — e cai na página pedida.
       conn = get(conn, ~p"/jogar")

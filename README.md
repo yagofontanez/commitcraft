@@ -12,9 +12,12 @@ Landing page e login com GitHub. O jogo em si ainda não existe: não há projet
 integração com repositório nem motor de XP. Os números que aparecem na página
 são ilustrativos e vivem em `lib/commitcraft_web/controllers/page_controller.ex`.
 
-Depois de entrar, `/jogar` lista seus projetos. Dá para criar projetos e ver o
-nível e a barra de XP de cada um — mas nada ainda alimenta esse XP, porque
-repositório não está conectado. Todo projeto nasce no nível 1 com a barra zerada.
+Depois de entrar, `/jogar` lista seus projetos. Dá para criar, renomear, apagar
+e **conectar um repositório do GitHub** a cada um.
+
+O que ainda não existe é o webhook: o repositório fica ligado, mas nenhum evento
+dele chega aqui, então nada alimenta o XP. Todo projeto continua no nível 1 com
+a barra zerada, e as telas dizem isso em vez de fingir.
 
 ## Login
 
@@ -24,10 +27,18 @@ mesmo que vai ler commits mais tarde.
 
 Duas coisas que valem a atenção de quem mexer aqui:
 
-- **O login pede só `read:user`.** O escopo `repo`, que dá acesso ao código, só
-  será pedido quando a pessoa for de fato conectar um repositório. Por isso os
-  escopos concedidos são guardados junto do token: é assim que se sabe, depois,
-  se já há permissão ou se é preciso mandar autorizar de novo.
+- **O login pede só `read:user`.** O escopo `repo` só é pedido quando a pessoa
+  clica para conectar um repositório — um segundo fluxo de OAuth, que volta pela
+  mesma URL de callback e se distingue pela intenção guardada na sessão. Por isso
+  os escopos concedidos ficam junto do token: é assim que se sabe se já há
+  permissão ou se é preciso mandar autorizar de novo.
+- **A conta que autoriza tem que ser a que está logada.** A tela do GitHub deixa
+  trocar de conta no meio do caminho; sem essa conferência, o token de uma conta
+  grudaria na sessão de outra.
+- **O repositório é buscado de novo pelo id, não aceito do formulário.** O nome
+  vem do navegador; é o GitHub quem sabe se aquela pessoa tem acesso àquele id.
+  E dois projetos não podem apontar para o mesmo repositório, senão cada commit
+  contaria duas vezes.
 - **O token é cifrado no banco** (`CommitCraft.EncryptedBinary`), com chave
   derivada do `secret_key_base`. Trocar esse segredo torna os tokens ilegíveis;
   isso é tratado como "precisa entrar de novo", não como erro.

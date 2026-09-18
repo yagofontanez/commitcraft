@@ -5,7 +5,7 @@ defmodule CommitCraft.AccountsFixtures do
   alias CommitCraft.Accounts
 
   def github_profile(attrs \\ %{}) do
-    id = System.unique_integer([:positive])
+    id = Map.get(Map.new(attrs), :id, System.unique_integer([:positive]))
 
     Enum.into(attrs, %{
       id: id,

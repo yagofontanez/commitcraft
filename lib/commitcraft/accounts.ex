@@ -44,6 +44,32 @@ defmodule CommitCraft.Accounts do
   end
 
   @doc """
+  Atualiza o token e os escopos depois de uma nova autorização.
+
+  Usado quando a pessoa amplia a permissão — de só ler o perfil para poder
+  enxergar os repositórios. A conta é a mesma; só a credencial muda.
+  """
+  def update_github_credentials(%User{} = user, %{} = credentials) do
+    user
+    |> Ecto.Changeset.change(
+      github_token: credentials.token,
+      github_scopes: credentials.scopes
+    )
+    |> Repo.update()
+  end
+
+  @doc """
+  Se a autorização atual cobre um escopo.
+
+  O GitHub não devolve escopos implícitos: quem tem `repo` não recebe
+  `public_repo` na lista, embora possa tudo que ele permite. Como só
+  perguntamos por `repo`, comparação direta basta — se um dia isso mudar, é
+  aqui que a regra mora.
+  """
+  def has_github_scope?(%User{github_scopes: scopes}, scope) when is_binary(scope),
+    do: scope in (scopes || [])
+
+  @doc """
   Esquece o token guardado, mantendo a conta.
 
   Usado quando a pessoa sai: não há motivo para guardar uma credencial de acesso

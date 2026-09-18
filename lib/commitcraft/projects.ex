@@ -26,6 +26,51 @@ defmodule CommitCraft.Projects do
   end
 
   @doc """
+  Liga um repositório do GitHub a um projeto.
+
+  Recebe o repositório já normalizado por `CommitCraft.GitHub.Api`. Devolve
+  `{:error, :already_connected}` quando outro projeto da mesma conta já aponta
+  para esse repositório — dois projetos no mesmo repo contariam cada commit
+  duas vezes.
+  """
+  def connect_repo(%User{} = user, slug, repo) do
+    case get_project(user, slug) do
+      nil ->
+        {:error, :not_found}
+
+      project ->
+        project
+        |> Project.repo_changeset(repo)
+        |> Repo.update()
+        |> case do
+          {:ok, project} -> {:ok, project}
+          {:error, changeset} -> {:error, motivo_da_conexao(changeset)}
+        end
+    end
+  end
+
+  defp motivo_da_conexao(changeset) do
+    if Enum.any?(changeset.errors, fn {_campo, {_msg, opts}} ->
+         opts[:constraint] == :unique
+       end),
+       do: :already_connected,
+       else: changeset
+  end
+
+  @doc "Desliga o repositório, mantendo o projeto e o XP já conquistado."
+  def disconnect_repo(%User{} = user, slug) do
+    case get_project(user, slug) do
+      nil -> {:error, :not_found}
+      project -> project |> Project.disconnect_changeset() |> Repo.update()
+    end
+  end
+
+  @doc "O projeto da conta que já usa este repositório, se houver."
+  def project_with_repo(%User{} = user, repo_id) when is_integer(repo_id) do
+    Repo.get_by(Project, user_id: user.id, repo_id: repo_id)
+  end
+
+  @doc """
   Apaga um projeto da pessoa, pelo apelido.
 
   Recebe o dono junto para que não exista caminho em que um apelido adivinhado

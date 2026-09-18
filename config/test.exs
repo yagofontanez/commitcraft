@@ -39,4 +39,4 @@ config :commitcraft, CommitCraft.GitHub.OAuth,
   client_id: "client-id-de-teste",
   client_secret: "client-secret-de-teste"
 
-config :commitcraft, github_req_options: [plug: {Req.Test, CommitCraft.GitHub.OAuth}]
+config :commitcraft, github_req_options: [plug: {Req.Test, CommitCraft.GitHub}]

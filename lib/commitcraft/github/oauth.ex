@@ -20,8 +20,16 @@ defmodule CommitCraft.GitHub.OAuth do
 
   @login_scopes ["read:user"]
 
+  # Para conectar um repositório é preciso enxergar os privados e poder criar o
+  # webhook. `repo` cobre os dois. É um pedido pesado, e por isso só aparece
+  # quando a pessoa escolhe conectar — nunca na porta de entrada.
+  @repo_scopes ["read:user", "repo"]
+
   @doc "Os escopos pedidos no login."
   def login_scopes, do: @login_scopes
+
+  @doc "Os escopos pedidos na hora de conectar um repositório."
+  def repo_scopes, do: @repo_scopes
 
   @doc """
   Para onde mandar a pessoa para autorizar.
@@ -29,12 +37,12 @@ defmodule CommitCraft.GitHub.OAuth do
   O `state` volta intacto no callback e é o que impede que alguém force uma
   sessão nossa com um código de autorização de outra pessoa.
   """
-  def authorize_url(state, redirect_uri) do
+  def authorize_url(state, redirect_uri, scopes \\ @login_scopes) do
     query =
       URI.encode_query(%{
         "client_id" => client_id(),
         "redirect_uri" => redirect_uri,
-        "scope" => Enum.join(@login_scopes, " "),
+        "scope" => Enum.join(scopes, " "),
         "state" => state,
         "allow_signup" => "true"
       })

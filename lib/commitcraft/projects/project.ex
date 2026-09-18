@@ -16,13 +16,44 @@ defmodule CommitCraft.Projects.Project do
     field :slug, :string
     field :xp, :integer, default: 0
 
-    # Preenchido quando a pessoa conectar um repositório. Até lá o projeto
+    # Preenchidos quando a pessoa conectar um repositório. Até lá o projeto
     # existe, mas nada alimenta o XP dele.
+    field :repo_id, :integer
     field :repo_full_name, :string
+    field :repo_private, :boolean
+    field :repo_connected_at, :utc_datetime
 
     belongs_to :user, User
 
     timestamps(type: :utc_datetime)
+  end
+
+  @doc """
+  Liga um repositório do GitHub a este projeto.
+
+  Guarda o id numérico junto do nome: o nome muda quando alguém renomeia o
+  repositório, o id não.
+  """
+  def repo_changeset(project, repo) do
+    project
+    |> change(
+      repo_id: repo.id,
+      repo_full_name: repo.full_name,
+      repo_private: repo.private,
+      repo_connected_at: DateTime.utc_now(:second)
+    )
+    |> validate_required([:repo_id, :repo_full_name])
+    |> unique_constraint([:user_id, :repo_id], name: :projects_user_id_repo_id_index)
+  end
+
+  @doc "Desliga o repositório, mantendo o projeto e o XP já conquistado."
+  def disconnect_changeset(project) do
+    change(project,
+      repo_id: nil,
+      repo_full_name: nil,
+      repo_private: nil,
+      repo_connected_at: nil
+    )
   end
 
   @doc false
